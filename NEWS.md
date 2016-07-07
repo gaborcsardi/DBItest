@@ -1,3 +1,41 @@
+# DBItest 1.3 (2016-07-07)
+
+
+Bug fixes
+---------
+
+- Fix `read_table` test when the backend actually returns the data in a different order.
+
+
+New tests
+---------
+
+- Test `dbDataType()` on connections (#69, #75, @imanuelcostigan).
+- Check returned strings for UTF-8 encoding (#72).
+- Repeated `dbBind()` + `dbFetch()` on the same result set (#51).
+
+
+Features
+--------
+
+- `tweaks()` gains an `...` as first argument to support future/deprecated tweaks (with a warning), and also to avoid unnamed arguments (#83).
+- `testthat` now shows a more accurate location for the source of errors, failures, and skips (#78).
+- Aggregate skipped tests, only one `skip()` call per test function.
+- Indicate that some tests are optional in documentation (#15).
+
+
+Internal
+--------
+
+- New `constructor_relax_args` tweak, currently not queried.
+- The `ctx` argument is now explicit in the test functions.
+- Change underscores to dashes in file names.
+- Remove `testthat` compatibility hack.
+- New `all_have_utf8_or_ascii_encoding()` which vectorizes `has_utf8_or_ascii_encoding()`.
+- Test on AppVeyor (#73).
+- Work around regression in R 3.3.0 (fix scheduled for R 3.3.1) which affected stress tests.
+
+
 # DBItest 1.2 (2016-05-21)
 
 - Infrastructure
