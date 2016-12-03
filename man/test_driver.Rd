@@ -11,48 +11,17 @@ test_driver(skip = NULL, ctx = get_default_context())
 against test names; skip test if matching any.}
 
 \item{ctx}{\code{[DBItest_context]}\cr A test context as created by
-\code{\link{make_context}}.}
+\code{\link[=make_context]{make_context()}}.}
 }
 \description{
 Test the "Driver" class
-}
-\details{
-This function defines the following tests:
-\describe{
-\item{\code{inherits_from_driver}}{
-Driver inherits from "DBIDriver" class
-}
-\item{\code{data_type_driver}}{
-SQL Data types exist for all basic R data types. dbDataType() does not
-throw an error and returns a nonempty atomic character
-}
-\item{\code{constructor_strict}}{
-Package exports constructor function that has no arguments.
-  The name of the constructor can be tweaked via \code{constructor_name}
-  in the context's \code{\link{tweaks}}, default: package name without
-  the leading R.
-  This test is optional, the
-  \code{constructor} test is a slightly weaker version.
-}
-\item{\code{constructor}}{
-Package exports constructor function, all arguments have default values.
-  The name of the constructor can be tweaked via \code{constructor_name}
-  in the context's \code{\link{tweaks}}, default: package name without
-  the leading R (if it exists).
-}
-\item{\code{get_info_driver}}{
-Return value of dbGetInfo has necessary elements
-}
-\item{\code{stress_load_unload}}{
-Repeated load, instantiation, and unload of package in a new R session.
-}
-}
 }
 \seealso{
 Other tests: \code{\link{test_compliance}},
   \code{\link{test_connection}},
   \code{\link{test_getting_started}},
   \code{\link{test_meta}}, \code{\link{test_result}},
-  \code{\link{test_sql}}
+  \code{\link{test_sql}}, \code{\link{test_stress}},
+  \code{\link{test_transaction}}
 }
 

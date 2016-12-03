@@ -11,45 +11,17 @@ test_connection(skip = NULL, ctx = get_default_context())
 against test names; skip test if matching any.}
 
 \item{ctx}{\code{[DBItest_context]}\cr A test context as created by
-\code{\link{make_context}}.}
+\code{\link[=make_context]{make_context()}}.}
 }
 \description{
 Test the "Connection" class
-}
-\details{
-This function defines the following tests:
-\describe{
-\item{\code{can_connect_and_disconnect}}{
-Can connect and disconnect, connection object inherits from
-  "DBIConnection".
-}
-\item{\code{data_type_connection}}{
-SQL Data types exist for all basic R data types. dbDataType() does not
-throw an error and returns a nonempty atomic character
-}
-\item{\code{cannot_disconnect_twice}}{
-Repeated disconnect throws warning.
-}
-\item{\code{simultaneous_connections}}{
-Open 50 simultaneous connections
-}
-\item{\code{stress_connections}}{
-Open and close 50 connections
-}
-\item{\code{get_info_connection}}{
-Return value of dbGetInfo has necessary elements
-}
-\item{\code{stress_load_connect_unload}}{
-Repeated load, instantiation, connection, disconnection, and unload of
-package in a new R session.
-}
-}
 }
 \seealso{
 Other tests: \code{\link{test_compliance}},
   \code{\link{test_driver}},
   \code{\link{test_getting_started}},
   \code{\link{test_meta}}, \code{\link{test_result}},
-  \code{\link{test_sql}}
+  \code{\link{test_sql}}, \code{\link{test_stress}},
+  \code{\link{test_transaction}}
 }
 

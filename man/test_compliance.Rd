@@ -11,28 +11,17 @@ test_compliance(skip = NULL, ctx = get_default_context())
 against test names; skip test if matching any.}
 
 \item{ctx}{\code{[DBItest_context]}\cr A test context as created by
-\code{\link{make_context}}.}
+\code{\link[=make_context]{make_context()}}.}
 }
 \description{
 Test full compliance to DBI
-}
-\details{
-This function defines the following tests:
-\describe{
-\item{\code{compliance}}{
-The package defines three classes that implement the required methods.
-}
-\item{\code{read_only}}{
-Writing to the database fails.  (You might need to set up a separate
-test context just for this test.)
-}
-}
 }
 \seealso{
 Other tests: \code{\link{test_connection}},
   \code{\link{test_driver}},
   \code{\link{test_getting_started}},
   \code{\link{test_meta}}, \code{\link{test_result}},
-  \code{\link{test_sql}}
+  \code{\link{test_sql}}, \code{\link{test_stress}},
+  \code{\link{test_transaction}}
 }
 

@@ -1,3 +1,35 @@
+# DBItest 1.4 (2016-12-02)
+
+## DBI specification
+
+- Use markdown in documentation.
+- Description of parametrized queries and statements (#88).
+- New hidden `DBIspec-wip` page for work-in-progress documentation.
+- Get rid of "Format" and "Usage" sections, and aliases, in the specs.
+
+## Tests
+
+- Not testing for presence of `max.connections` element in `dbGetInfo(Driver)` (rstats-db/DBI#56).
+- Test multi-row binding for queries and statements (#96).
+- New `ellipsis` check that verifies that all implemented DBI methods contain `...` in their formals. This excludes `show()` and all methods defined in this or other packages.
+- Refactored `bind_` tests to use the new `parameter_pattern` tweak (#95).
+- Rough draft of transaction tests (#36).
+- New `fetch_zero_rows` test, split from `fetch_premature_close`.
+- The "compliance" test tests that the backend package exports exactly one subclass of each DBI virtual class.
+- Document and enhance test for `dbDataType("DBIDriver", "ANY")` (#88).
+- Minor corrections for "bind" tests.
+
+## Internal
+
+- Isolate stress tests from main test suite (#92).
+- Refactor test specification in smaller modules, isolated from actual test execution (#81). This breaks the documentation of the tests, which will be substituted by a DBI specification in prose.
+- Align description of binding with code.
+- Refactor tests for `dbBind()`, test is run by `BindTester` class, and behavior is specified by members and by instances of the new `BindTesterExtra` class.
+- The `skip` argument to the `test_()` functions is again evaluated with `perl = TRUE` to support negative lookaheads (#33).
+- Use `dbSendStatement()` and `dbExecute()` where appropriate.
+- Avoid empty subsections in Rd documentation to satisfy `R CMD check` (#81).
+
+
 # DBItest 1.3 (2016-07-07)
 
 
