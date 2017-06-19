@@ -1,10 +1,22 @@
-#' @template dbispec-sub-wip
+#' @template dbispec-sub
 #' @format NULL
-#' @section Full compliance:
-#' \subsection{All of DBI}{
+#' @section DBI classes and methods:
 spec_compliance_methods <- list(
-  #' The package defines three classes that implement the required methods.
+  #' A backend defines three classes,
   compliance = function(ctx) {
+    #' which are subclasses of
+    expect_identical(
+      names(key_methods),
+      c(
+        #' [DBIDriver-class],
+        "Driver",
+        #' [DBIConnection-class],
+        "Connection",
+        #' and [DBIResult-class].
+        "Result"
+      )
+    )
+
     pkg <- package_name(ctx)
 
     where <- asNamespace(pkg)
@@ -20,6 +32,9 @@ spec_compliance_methods <- list(
 
       class <- classes[[1]]
 
+      #' The backend provides implementation for all methods
+      #' of these base classes
+      #' that are defined but not implemented by DBI.
       mapply(function(method, args) {
         expect_has_class_method(method, class, args, where)
       }, names(key_methods[[name]]), key_methods[[name]])
@@ -36,7 +51,6 @@ spec_compliance_methods <- list(
     Map(expect_ellipsis_in_formals, methods, names(methods))
   },
 
-  #' }
   NULL
 )
 

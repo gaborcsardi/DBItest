@@ -9,49 +9,61 @@
 #
 # Output: Files R/test-xxx-1.R and R/test-xxx-2.R, and @include directives to stdout
 
+##### All
+#' @include spec-all.R
+##### Stress
 #' @include spec-stress.R
 #' @include spec-stress-connection.R
-#' @include spec-stress-driver.R
+##### Aggregators
 #' @include spec-compliance.R
-#' @include spec-compliance-read-only.R
-#' @include spec-compliance-methods.R
 #' @include spec-transaction.R
-#' @include spec-transaction-with-transaction.R
-#' @include spec-transaction-begin-rollback.R
-#' @include spec-transaction-begin-commit.R
 #' @include spec-meta.R
-#' @include spec-meta-bind-.R
-#' @include spec-meta-bind-multi-row.R
-#' @include spec-meta-bind.R
+#' @include spec-sql.R
+#' @include spec-result.R
+#' @include spec-connection.R
+#' @include spec-driver.R
+##### Later
 #' @include spec-meta-get-info-result.R
+#' @include spec-meta-column-info.R
+#' @include spec-sql-list-fields.R
+#' @include spec-connection-get-info.R
+#' @include spec-driver-get-info.R
+##### Method specs
+#' @include spec-transaction-with-transaction.R
+#' @include spec-transaction-begin-commit-rollback.R
 #' @include spec-meta-get-rows-affected.R
 #' @include spec-meta-get-row-count.R
-#' @include spec-meta-column-info.R
 #' @include spec-meta-get-statement.R
-#' @include spec-meta-is-valid-result.R
-#' @include spec-meta-is-valid-connection.R
-#' @include spec-sql.R
-#' @include spec-sql-list-fields.R
+#' @include spec-meta-has-completed.R
+#' @include spec-meta-is-valid.R
+#' @include spec-meta-bind-.R
+#' @include spec-meta-bind.R
+#' @include spec-meta-bind-tester-extra.R
+#' @include spec-meta-bind-runner.R
+#' @include spec-sql-remove-table.R
+#' @include spec-sql-exists-table.R
 #' @include spec-sql-list-tables.R
-#' @include spec-sql-read-write-roundtrip.R
-#' @include spec-sql-read-write-table.R
+#' @include spec-sql-write-table.R
+#' @include spec-sql-read-table.R
 #' @include spec-sql-quote-identifier.R
 #' @include spec-sql-quote-string.R
-#' @include spec-result.R
-#' @include spec-result-roundtrip.R
-#' @include spec-result-create-table-with-data-type.R
+#' @include spec-result-execute.R
+#' @include spec-result-send-statement.R
 #' @include spec-result-get-query.R
+#' @include spec-result-clear-result.R
+#' @include spec-result-roundtrip.R
 #' @include spec-result-fetch.R
 #' @include spec-result-send-query.R
-#' @include spec-connection.R
-#' @include spec-connection-get-info.R
+#' @include spec-connection-disconnect.R
+#' @include spec-driver-connect.R
+#' @include spec-result-create-table-with-data-type.R
 #' @include spec-connection-data-type.R
-#' @include spec-connection-connect.R
-#' @include spec-driver.R
-#' @include spec-driver-get-info.R
 #' @include spec-driver-data-type.R
-#' @include spec-driver-constructor.R
+##### Class specs
 #' @include spec-driver-class.R
+##### Soft specs
+#' @include spec-driver-constructor.R
+#' @include spec-compliance-methods.R
 #' @include spec-getting-started.R
 #' @include spec.R
 NULL

@@ -1,200 +1,287 @@
-run_bind_tester <- list()
-
-#' @template dbispec-sub
+#' spec_meta_bind
+#' @usage NULL
 #' @format NULL
-#' @section Parametrized queries and statements:
-#' \pkg{DBI} supports parametrized (or prepared) queries and statements
-#' via the [DBI::dbBind()] generic.
-#' Parametrized queries are different from normal queries
-#' in that they allow an arbitrary number of placeholders,
-#' which are later substituted by actual values.
-#' Parametrized queries (and statements) serve two purposes:
-#'
-#' - The same query can be executed more than once with different values.
-#'   The DBMS may cache intermediate information for the query,
-#'   such as the execution plan,
-#'   and execute it faster.
-#' - Separation of query syntax and parameters protects against SQL injection.
-#'
-#' The placeholder format is currently not specified by \pkg{DBI};
-#' in the future, a uniform placeholder syntax may be supported.
-#' Consult the backend documentation for the supported formats.
-#' For automated testing, backend authors specify the placeholder syntax with
-#' the `placeholder_pattern` tweak.
-#' Known examples are:
-#'
-#' - `?` (positional matching in order of appearance) in \pkg{RMySQL} and \pkg{RSQLite}
-#' - `$1` (positional matching by index) in \pkg{RPostgres} and \pkg{RSQLite}
-#' - `:name` and `$name` (named matching) in \pkg{RSQLite}
-#'
-#' \pkg{DBI} clients execute parametrized statements as follows:
-#'
-run_bind_tester$fun <- function() {
-  if (extra_obj$requires_names() && is.null(names(placeholder))) {
-    # wrong_name test only valid for named placeholders
-    return()
-  }
-
-  # FIXME
-  #' 1. Call [DBI::dbSendQuery()] or [DBI::dbSendStatement()] with a query or statement
-  #'    that contains placeholders,
-  #'    store the returned \code{\linkS4class{DBIResult}} object in a variable.
-  #'    Mixing placeholders (in particular, named and unnamed ones) is not
-  #'    recommended.
-  if (is_query())
-    res <- send_query()
-  else
-    res <- send_statement()
-  #'    It is good practice to register a call to [DBI::dbClearResult()] via
-  #'    [on.exit()] right after calling `dbSendQuery()`, see the last
-  #'    enumeration item.
-  on.exit(expect_error(dbClearResult(res), NA))
-
-  #' 1. Construct a list with parameters
-  #'    that specify actual values for the placeholders.
-  bind_values <- values
-  #'    The list must be named or unnamed,
-  #'    depending on the kind of placeholders used.
-  #'    Named values are matched to named parameters, unnamed values
-  #'    are matched by position.
-  if (!is.null(names(placeholder))) {
-    names(bind_values) <- names(placeholder)
-  }
-  #'    All elements in this list must have the same lengths and contain values
-  #'    supported by the backend; a [data.frame()] is internally stored as such
-  #'    a list.
-  # FIXME
-
-  #'    The parameter list is passed a call to [dbBind()] on the `DBIResult`
-  #'    object.
-  if (!bind(res, bind_values))
-    return()
-
-  #' 1. Retrieve the data or the number of affected rows from the  `DBIResult` object.
-  retrieve <- function() {
-    #'     - For queries issued by `dbSendQuery()`,
-    #'       call [DBI::dbFetch()].
-    if (is_query()) {
-      rows <- dbFetch(res)
-      compare(rows, values)
-    } else {
-    #'     - For statements issued by `dbSendStatements()`,
-    #'       call [DBI::dbGetRowsAffected()].
-    #'       (Execution begins immediately after the `dbBind()` call,
-    #'       the statement is processed entirely before the function returns.
-    #'       Calls to `dbFetch()` are ignored.)
-      rows_affected <- dbGetRowsAffected(res)
-      compare_affected(rows_affected, values)
-    }
-  }
-  retrieve()
-
-  #' 1. Repeat 2. and 3. as necessary.
-  if (extra_obj$is_repeated()) {
-    bind(res, bind_values)
-    retrieve()
-  }
-
-  #' 1. Close the result set via [DBI::dbClearResult()].
-}
-
-
-
-#' @template dbispec-sub-wip
-#' @format NULL
-#' @section Parametrised queries and statements:
-#' \subsection{`dbBind("DBIResult")`}{
+#' @keywords NULL
 spec_meta_bind <- list(
-  #' Empty binding with check of
-  #' return value.
+  bind_formals = function(ctx) {
+    # <establish formals of described functions>
+    expect_equal(names(formals(dbBind)), c("res", "params", "..."))
+  },
+
+  #' @return
+  bind_return_value = function(ctx) {
+    extra <- new_bind_tester_extra(
+      check_return_value = function(bind_res, res) {
+        #' `dbBind()` returns the result set,
+        expect_identical(res, bind_res$value)
+        #' invisibly,
+        expect_false(bind_res$visible)
+      }
+    )
+
+    with_connection({
+      #' for queries issued by [dbSendQuery()]
+      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra)
+    })
+
+    with_connection({
+      #' and also for data manipulation statements issued by
+      #' [dbSendStatement()].
+      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra, query = FALSE)
+    })
+  },
+
   bind_empty = function(ctx) {
     with_connection({
-      res <- dbSendQuery(con, "SELECT 1")
-      on.exit(expect_error(dbClearResult(res), NA), add = TRUE)
-
-      bind_res <- withVisible(dbBind(res, list()))
-      expect_false(bind_res$visible)
-      expect_identical(res, bind_res$value)
+      with_result(
+        #' Calling `dbBind()` for a query without parameters
+        dbSendQuery(con, "SELECT 1"),
+        #' raises an error.
+        expect_error(dbBind(res, list()))
+      )
     })
   },
 
-  #' Binding of integer values raises an
-  #' error if connection is closed.
-  bind_error = function(ctx) {
-    con <- connect(ctx)
-    dbDisconnect(con)
-    expect_error(test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L))
-  },
-
-  #' Binding of integer values with check of
-  #' return value.
-  bind_return_value = function(ctx) {
-    with_connection({
-      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = "return_value")
-    })
-  },
-
-  #' Binding of integer values with too many
-  #' values.
   bind_too_many = function(ctx) {
+    extra <- new_bind_tester_extra(
+      patch_bind_values = function(bind_values) {
+        #' Binding too many
+        c(bind_values, bind_values[[1L]])
+      }
+    )
     with_connection({
-      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = "too_many")
+      expect_error(
+        test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra)
+      )
     })
   },
 
-  #' Binding of integer values with too few
-  #' values.
   bind_not_enough = function(ctx) {
+    extra <- new_bind_tester_extra(
+      patch_bind_values = function(bind_values) {
+        #' or not enough values,
+        bind_values[-1L]
+      }
+    )
     with_connection({
-      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = "not_enough")
+      expect_error(
+        test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra)
+      )
     })
   },
 
-  #' Binding of integer values, repeated.
-  bind_repeated = function(ctx) {
-    with_connection({
-      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = "repeated")
-    })
-  },
-
-  #' Binding of integer values with wrong names.
   bind_wrong_name = function(ctx) {
+    extra <- new_bind_tester_extra(
+      patch_bind_values = function(bind_values) {
+        #' or parameters with wrong names
+        stats::setNames(bind_values, paste0("bogus", names(bind_values)))
+      },
+
+      requires_names = function() TRUE
+    )
     with_connection({
-      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = "wrong_name")
+      expect_error(
+        test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra)
+      )
     })
   },
 
-  #' Binding of integer values.
+  bind_multi_row_unequal_length = function(ctx) {
+    extra <- new_bind_tester_extra(
+      patch_bind_values = function(bind_values) {
+        #' or unequal length,
+        bind_values[[2]] <- bind_values[[2]][-1]
+        bind_values
+      }
+    )
+    with_connection({
+      #' also raises an error.
+      expect_error(
+        test_select_bind(
+          con, ctx$tweaks$placeholder_pattern, list(1:3, 2:4),
+          extra = extra, query = FALSE
+        )
+      )
+    })
+  },
+
+  #' If the placeholders in the query are named,
+  bind_named_param_unnamed_placeholders = function(ctx) {
+    extra <- new_bind_tester_extra(
+      patch_bind_values = function(bind_values) {
+        #' all parameter values must have names
+        stats::setNames(bind_values, NULL)
+      },
+
+      requires_names = function() TRUE
+    )
+    with_connection({
+      expect_error(
+        test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra)
+      )
+    })
+  },
+
+  bind_named_param_empty_placeholders = function(ctx) {
+    extra <- new_bind_tester_extra(
+      patch_bind_values = function(bind_values) {
+        #' (which must not be empty
+        names(bind_values)[[1]] <- ""
+      },
+
+      requires_names = function() TRUE
+    )
+    with_connection({
+      expect_error(
+        test_select_bind(con, ctx$tweaks$placeholder_pattern, list(1L, 2L), extra = extra)
+      )
+    })
+  },
+
+  bind_named_param_na_placeholders = function(ctx) {
+    extra <- new_bind_tester_extra(
+      patch_bind_values = function(bind_values) {
+        #' or `NA`),
+        names(bind_values)[[1]] <- NA
+      },
+
+      requires_names = function() TRUE
+    )
+    with_connection({
+      expect_error(
+        test_select_bind(con, ctx$tweaks$placeholder_pattern, list(1L, 2L), extra = extra)
+      )
+    })
+  },
+
+  #' and vice versa,
+  bind_unnamed_param_named_placeholders = function(ctx) {
+    extra <- new_bind_tester_extra(
+      patch_bind_values = function(bind_values) {
+        stats::setNames(bind_values, letters[seq_along(bind_values)])
+      },
+
+      requires_names = function() FALSE
+    )
+    with_connection({
+      #' otherwise an error is raised.
+      expect_error(
+        test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra)
+      )
+    })
+  },
+
+  #' The behavior for mixing placeholders of different types
+  #' (in particular mixing positional and named placeholders)
+  #' is not specified.
+  #'
+
+  bind_premature_clear = function(ctx) {
+    extra <- new_bind_tester_extra(
+      #' Calling `dbBind()` on a result set already cleared by [dbClearResult()]
+      is_premature_clear = function() TRUE
+    )
+    with_connection({
+      #' also raises an error.
+      expect_error(
+        test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra)
+      )
+    })
+  },
+
+  #' @section Specification:
+  #' The elements of the `params` argument do not need to be scalars,
+  bind_multi_row = function(ctx) {
+    with_connection({
+      #' vectors of arbitrary length
+      test_select_bind(con, ctx$tweaks$placeholder_pattern, list(1:3))
+    })
+  },
+
+  bind_multi_row_zero_length = function(ctx) {
+    with_connection({
+      #' (including length 0)
+      test_select_bind(con, ctx$tweaks$placeholder_pattern, list(integer(), integer()))
+    })
+
+    #' are supported.
+    # This behavior is tested as part of run_bind_tester$fun
+    #' For queries, calling `dbFetch()` binding such parameters returns
+    #' concatenated results, equivalent to binding and fetching for each set
+    #' of values and connecting via [rbind()].
+  },
+
+  bind_multi_row_statement = function(ctx) {
+    with_connection({
+      # This behavior is tested as part of run_bind_tester$fun
+      #' For data manipulation statements, `dbGetRowsAffected()` returns the
+      #' total number of rows affected if binding non-scalar parameters.
+      test_select_bind(con, ctx$tweaks$placeholder_pattern, list(1:3), query = FALSE)
+    })
+  },
+
+  bind_repeated = function(ctx) {
+    extra <- new_bind_tester_extra(
+      #' `dbBind()` also accepts repeated calls on the same result set
+      is_repeated = function() TRUE
+    )
+
+    with_connection({
+      #' for both queries
+      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra)
+    })
+
+    with_connection({
+      #' and data manipulation statements,
+      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra, query = FALSE)
+    })
+  },
+
+  bind_repeated_untouched = function(ctx) {
+    extra <- new_bind_tester_extra(
+      #' even if no results are fetched between calls to `dbBind()`.
+      is_repeated = function() TRUE,
+      is_untouched = function() TRUE
+    )
+
+    with_connection({
+      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra)
+    })
+
+    with_connection({
+      test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L, extra = extra, query = FALSE)
+    })
+  },
+
+  #'
+  #' At least the following data types are accepted:
+  #' - [integer]
   bind_integer = function(ctx) {
     with_connection({
       test_select_bind(con, ctx$tweaks$placeholder_pattern, 1L)
     })
   },
 
-  #' Binding of numeric values.
+  #' - [numeric]
   bind_numeric = function(ctx) {
     with_connection({
       test_select_bind(con, ctx$tweaks$placeholder_pattern, 1.5)
     })
   },
 
-  #' Binding of logical values.
+  #' - [logical] for Boolean values (some backends may return an integer)
   bind_logical = function(ctx) {
-    with_connection({
-      test_select_bind(con, ctx$tweaks$placeholder_pattern, TRUE)
-    })
-  },
-
-  #' Binding of logical values (coerced to integer).
-  bind_logical_int = function(ctx) {
     with_connection({
       test_select_bind(
         con, ctx$tweaks$placeholder_pattern, TRUE,
-        transform_input = function(x) as.character(as.integer(x)))
+        type = NULL,
+        transform_input = ctx$tweaks$logical_return,
+        transform_output = ctx$tweaks$logical_return
+      )
     })
   },
 
-  #' Binding of `NULL` values.
+  #' - [NA]
   bind_null = function(ctx) {
     with_connection({
       test_select_bind(
@@ -204,22 +291,48 @@ spec_meta_bind <- list(
     })
   },
 
-  #' Binding of character values.
+  #' - [character]
   bind_character = function(ctx) {
     with_connection({
-      test_select_bind(con, ctx$tweaks$placeholder_pattern, texts)
+      test_select_bind(
+        con,
+        ctx$tweaks$placeholder_pattern,
+        texts
+      )
     })
   },
 
-  #' Binding of date values.
+  #' - [factor] (bound as character,
+  bind_factor = function(ctx) {
+    with_connection({
+      #' with warning)
+      expect_warning(
+        test_select_bind(
+          con,
+          ctx$tweaks$placeholder_pattern,
+          lapply(texts, factor)
+        )
+      )
+    })
+  },
+
+  #' - [Date]
   bind_date = function(ctx) {
+    if (!isTRUE(ctx$tweaks$date_typed)) {
+      skip("tweak: !date_typed")
+    }
+
     with_connection({
       test_select_bind(con, ctx$tweaks$placeholder_pattern, Sys.Date())
     })
   },
 
-  #' Binding of [POSIXct] timestamp values.
+  #' - [POSIXct] timestamps
   bind_timestamp = function(ctx) {
+    if (!isTRUE(ctx$tweaks$timestamp_typed)) {
+      skip("tweak: !timestamp_typed")
+    }
+
     with_connection({
       data_in <- as.POSIXct(round(Sys.time()))
       test_select_bind(
@@ -231,19 +344,23 @@ spec_meta_bind <- list(
     })
   },
 
-  #' Binding of [POSIXlt] timestamp values.
+  #' - [POSIXlt] timestamps
   bind_timestamp_lt = function(ctx) {
+    if (!isTRUE(ctx$tweaks$timestamp_typed)) {
+      skip("tweak: !timestamp_typed")
+    }
+
     with_connection({
       data_in <- as.POSIXlt(round(Sys.time()))
       test_select_bind(
         con, ctx$tweaks$placeholder_pattern, data_in,
         type = dbDataType(con, data_in),
         transform_input = as.POSIXct,
-        transform_output = identity)
+        transform_output = as.POSIXct)
     })
   },
 
-  #' Binding of raw values.
+  #' - lists of [raw] for blobs (with `NULL` entries for SQL NULL values)
   bind_raw = function(ctx) {
     if (isTRUE(ctx$tweaks$omit_blob_tests)) {
       skip("tweak: omit_blob_tests")
@@ -253,25 +370,25 @@ spec_meta_bind <- list(
       test_select_bind(
         con, ctx$tweaks$placeholder_pattern, list(list(as.raw(1:10))),
         type = NULL,
+        transform_input = blob::as.blob,
+        transform_output = blob::as.blob)
+    })
+  },
+
+  #' - objects of type [blob::blob]
+  bind_blob = function(ctx) {
+    if (isTRUE(ctx$tweaks$omit_blob_tests)) {
+      skip("tweak: omit_blob_tests")
+    }
+
+    with_connection({
+      test_select_bind(
+        con, ctx$tweaks$placeholder_pattern, list(blob::blob(as.raw(1:10))),
+        type = NULL,
         transform_input = identity,
-        transform_output = identity)
+        transform_output = blob::as.blob)
     })
   },
 
-  #' Binding of statements.
-  bind_statement = function(ctx) {
-    with_connection({
-      test_select_bind(con, ctx$tweaks$placeholder_pattern, list(1), query = FALSE)
-    })
-  },
-
-  #' Repeated binding of statements.
-  bind_statement_repeated = function(ctx) {
-    with_connection({
-      test_select_bind(con, ctx$tweaks$placeholder_pattern, list(1), query = FALSE, extra = "repeated")
-    })
-  },
-
-  #' }
   NULL
 )
