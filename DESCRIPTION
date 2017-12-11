@@ -1,7 +1,7 @@
 Package: DBItest
 Title: Testing 'DBI' Back Ends
-Version: 1.5
-Date: 2017-06-18
+Version: 1.5-1
+Date: 2017-12-11
 Authors@R: c( person(given = "Kirill", family = "Müller", role =
         c("aut", "cre"), email = "krlmlr+r@mailbox.org"),
         person("RStudio", role = "cph") )
@@ -48,9 +48,9 @@ Collate: 'DBItest.R' 'context.R' 'expectations.R' 'import-dbi.R'
         'test-compliance.R' 'test-stress.R' 'tweaks.R' 'utf8.R'
         'utils.R'
 NeedsCompilation: no
-Packaged: 2017-06-18 21:52:02 UTC; muelleki
+Packaged: 2017-12-10 23:15:24 UTC; muelleki
 Author: Kirill Müller [aut, cre],
   RStudio [cph]
 Maintainer: Kirill Müller <krlmlr+r@mailbox.org>
 Repository: CRAN
-Date/Publication: 2017-06-19 09:04:40 UTC
+Date/Publication: 2017-12-11 07:55:11 UTC

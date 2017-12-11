@@ -1,6 +1,6 @@
-1245c831423fc02893cba904ec8c6a0e *DESCRIPTION
+8c9e6479b32bb78bb259f119acf93462 *DESCRIPTION
 c2778d0fdb65dfda6196920fc40b9592 *NAMESPACE
-1297e2e3d373cdc5ebd926d0dfb5727f *NEWS.md
+47c70b86e85d8d9796c18d150ff959b9 *NEWS.md
 f956e8e1290d2316d720831804645f34 *R/DBItest.R
 34b240efcc81cd529578dd0ae94d9d4a *R/context.R
 d5685a8b06a7bc18eb306206ade486e9 *R/expectations.R
@@ -13,7 +13,7 @@ d1e36fe1f7d910ebe6ded24c9a2052b3 *R/import-testthat.R
 06780ae0e6199d4a6f2bcf930bbb62a6 *R/spec-compliance-methods.R
 972cfc91acad25db5b17773e92da485d *R/spec-compliance.R
 0edfb3ab996e0e1fd47f208b02e81fad *R/spec-connection-data-type.R
-4be7c2d1297094effddfb76bacaf6382 *R/spec-connection-disconnect.R
+f3c673a7e9bf7373c394359a2bb467a2 *R/spec-connection-disconnect.R
 983bcf8185cfa4639f6154d049bcff7a *R/spec-connection-get-info.R
 a7d5ca6edad9ad39cfce44daabdc4a54 *R/spec-connection.R
 bba2f83db6655029c093f677317a9a5f *R/spec-driver-class.R
@@ -73,15 +73,15 @@ c23e4b8e51ad324d42d65f45e10eaacc *R/test-sql.R
 5bb7302537533dc370d8aa96bb6d1dfd *R/utf8.R
 1468998e72e9e9f2aa9407b458efa685 *R/utils.R
 2ac48354a76e3430802052eff9620bac *README.md
-7d7ae464019d1910adc2ab02227e99c1 *build/vignette.rds
+71cdad4e660e9abab84174d4d20b703f *build/vignette.rds
 1994b1ff1f8a4d1ded48cd7a04a8d770 *inst/doc/test.Rmd
-74bdb117c2241a1e04ff843b5ea20e6b *inst/doc/test.html
+57e4a0e7703332ccd79df1f334fcc779 *inst/doc/test.html
 f4991d67bed9b353e9d345df60f0644a *man/DBIspec-wip.Rd
 02423d348a28bc746dbdcbad995a6133 *man/DBIspec.Rd
 742938944bd94771b0908461884e4335 *man/DBItest-package.Rd
 db14a08cc7e54abf4f37c7925f6dcd22 *man/context.Rd
 d1ce288efebb76c3a37173ed08b424aa *man/make_placeholder_fun.Rd
-f11d528da585cc8c980d8666c97f91a5 *man/spec_connection_disconnect.Rd
+780fd49920719103acd3ac2fd03a38de *man/spec_connection_disconnect.Rd
 ac236b13318f49da5ddb0a934848f4d1 *man/spec_driver_connect.Rd
 90198413c2c473ea8c8588b916cf2117 *man/spec_driver_data_type.Rd
 7e60c90549131ef6e5a191454c00e607 *man/spec_meta_bind.Rd
