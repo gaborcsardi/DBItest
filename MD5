@@ -1,6 +1,6 @@
-8c9e6479b32bb78bb259f119acf93462 *DESCRIPTION
-c2778d0fdb65dfda6196920fc40b9592 *NAMESPACE
-47c70b86e85d8d9796c18d150ff959b9 *NEWS.md
+bd53e42892f7ebc7a1a511bd8369210e *DESCRIPTION
+3d72fbf8895684538555f27ecd187ede *NAMESPACE
+498b3fbfc4d2c0f93aab918bcfc590e3 *NEWS.md
 f956e8e1290d2316d720831804645f34 *R/DBItest.R
 34b240efcc81cd529578dd0ae94d9d4a *R/context.R
 d5685a8b06a7bc18eb306206ade486e9 *R/expectations.R
@@ -22,7 +22,7 @@ a5de28228f154ad01aa1fda9b1b2a45b *R/spec-driver-connect.R
 67e621f97e3edbe3deb6069874284363 *R/spec-driver-data-type.R
 978caf381fa28ccf9cc86f6e6dd1829e *R/spec-driver-get-info.R
 c9021aed2d2038ce94985e8a32dec17c *R/spec-driver.R
-efc53f22877e18c2c0a9c3075de644c6 *R/spec-getting-started.R
+012d53b27aa0904ed817349447756592 *R/spec-getting-started.R
 36943fabb95767725ed0e8612932d8ac *R/spec-meta-bind-.R
 10f95280bda787682afa81de099f75d0 *R/spec-meta-bind-runner.R
 edad73f8c65e82e0b0e525775e2b36fb *R/spec-meta-bind-tester-extra.R
@@ -40,7 +40,7 @@ fe580adc31ab99c23239c7cf27cfade3 *R/spec-meta-is-valid.R
 edbdfa32d432d88b2a6708b5775a4e09 *R/spec-result-execute.R
 6d0d6ea9abfc359d5f68c85cf09b7a9b *R/spec-result-fetch.R
 849ca1b0185d36d5d2d9ebb97067efbb *R/spec-result-get-query.R
-61e1515f84caaa4f7d6decc65f73ff08 *R/spec-result-roundtrip.R
+78e91a69133766b000af15290f36ab2e *R/spec-result-roundtrip.R
 f6b3a5fc1b1140ccbda87f149135be1d *R/spec-result-send-query.R
 032c1ebecb0d5fd83ca9949fde8ab0f7 *R/spec-result-send-statement.R
 731f38402ebc536101493e18e9d6d4c5 *R/spec-result.R
@@ -75,7 +75,7 @@ c23e4b8e51ad324d42d65f45e10eaacc *R/test-sql.R
 2ac48354a76e3430802052eff9620bac *README.md
 71cdad4e660e9abab84174d4d20b703f *build/vignette.rds
 1994b1ff1f8a4d1ded48cd7a04a8d770 *inst/doc/test.Rmd
-57e4a0e7703332ccd79df1f334fcc779 *inst/doc/test.html
+c208798ec9a9f5945d6db842c5e9a646 *inst/doc/test.html
 f4991d67bed9b353e9d345df60f0644a *man/DBIspec-wip.Rd
 02423d348a28bc746dbdcbad995a6133 *man/DBIspec.Rd
 742938944bd94771b0908461884e4335 *man/DBItest-package.Rd
