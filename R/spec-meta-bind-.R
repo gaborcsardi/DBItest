@@ -1,6 +1,17 @@
 # Helpers -----------------------------------------------------------------
 
-test_select_bind <- function(con, placeholder_fun, ...) {
+test_select_bind <- function(con, ctx, ...) {
+  lapply(
+    get_placeholder_funs(ctx),
+    test_select_bind_one,
+    con = con,
+    is_null_check = ctx$tweaks$is_null_check,
+    ...
+  )
+}
+
+get_placeholder_funs <- function(ctx) {
+  placeholder_fun <- ctx$tweaks$placeholder_pattern
   if (is.character(placeholder_fun))
     placeholder_fun <- lapply(placeholder_fun, make_placeholder_fun)
   else if (is.function(placeholder_fun))
@@ -10,24 +21,19 @@ test_select_bind <- function(con, placeholder_fun, ...) {
     skip("Use the placeholder_pattern tweak, or skip all 'bind_.*' tests")
   }
 
-  lapply(placeholder_fun, test_select_bind_one, con = con, ...)
+  placeholder_fun
 }
 
-test_select_bind_one <- function(con, placeholder_fun, values,
-                                 type = "character(10)",
+test_select_bind_one <- function(con, placeholder_fun, is_null_check, values,
                                  query = TRUE,
-                                 transform_input = as.character,
-                                 transform_output = function(x) trimws(x, "right"),
-                                 expect = expect_identical,
-                                 extra = "none") {
+                                 extra = "none",
+                                 cast_fun = identity) {
   bind_tester <- BindTester$new(con)
-  bind_tester$placeholder <- placeholder_fun(length(values))
+  bind_tester$placeholder_fun <- placeholder_fun
+  bind_tester$is_null_check <- is_null_check
+  bind_tester$cast_fun <- cast_fun
   bind_tester$values <- values
-  bind_tester$type <- type
   bind_tester$query <- query
-  bind_tester$transform$input <- transform_input
-  bind_tester$transform$output <- transform_output
-  bind_tester$expect$fun <- expect
   bind_tester$extra_obj <- new_extra_imp(extra)
 
   bind_tester$run()
@@ -70,12 +76,11 @@ BindTester <- R6::R6Class(
     run = run_bind_tester$fun,
 
     con = NULL,
-    placeholder = NULL,
+    placeholder_fun = NULL,
+    is_null_check = NULL,
+    cast_fun = NULL,
     values = NULL,
-    type = "character(10)",
     query = TRUE,
-    transform = list(input = as.character, output = function(x) trimws(x, "right")),
-    expect = list(fun = expect_identical),
     extra_obj = NULL
   ),
 
@@ -85,14 +90,25 @@ BindTester <- R6::R6Class(
     },
 
     send_query = function() {
-      value_names <- letters[seq_along(values)]
-      if (is.null(type)) {
-        typed_placeholder <- placeholder
-      } else {
-        typed_placeholder <- paste0("cast(", placeholder, " as ", type, ")")
-      }
-      query <- paste0("SELECT ", paste0(
-        typed_placeholder, " as ", value_names, collapse = ", "))
+      ret_values <- trivial_values(2)
+      placeholder <- placeholder_fun(length(values))
+      is_na <- vapply(values, is_na_or_null, logical(1))
+      placeholder_values <- vapply(values, function(x) quote_literal(con, x[1]), character(1))
+
+      query <- paste0(
+        "SELECT CASE WHEN ",
+        paste0(
+          ifelse(
+            is_na,
+            paste0("(", is_null_check(cast_fun(placeholder)), ")"),
+            paste0("(", cast_fun(placeholder), " = ", placeholder_values, ")")
+          ),
+          collapse = " AND "
+        ),
+        " THEN ", ret_values[[1]],
+        " ELSE ", ret_values[[2]], " END",
+        " AS a"
+      )
 
       dbSendQuery(con, query)
     },
@@ -104,8 +120,9 @@ BindTester <- R6::R6Class(
       dbWriteTable(con, table_name, data, temporary = TRUE)
 
       value_names <- letters[seq_along(values)]
+      placeholder <- placeholder_fun(length(values))
       statement <- paste0(
-        "UPDATE ", dbQuoteIdentifier(con, table_name), "SET b = b + 1 WHERE ",
+        "UPDATE ", dbQuoteIdentifier(con, table_name), " SET b = b + 1 WHERE ",
         paste(value_names, " = ", placeholder, collapse = " AND "))
 
       dbSendStatement(con, statement)
@@ -113,15 +130,19 @@ BindTester <- R6::R6Class(
 
     bind = function(res, bind_values) {
       bind_values <- extra_obj$patch_bind_values(bind_values)
+      bind_error <- extra_obj$bind_error()
+      expect_error(bind_res <- withVisible(dbBind(res, bind_values)), bind_error)
 
-      bind_res <- withVisible(dbBind(res, bind_values))
-      extra_obj$check_return_value(bind_res, res)
+      if (is.na(bind_error)) extra_obj$check_return_value(bind_res, res)
       invisible()
     },
 
-    compare = function(rows, values) {
-      expect$fun(lapply(unname(rows), transform$output),
-                 lapply(unname(values), transform$input))
+    compare = function(rows) {
+      expect_equal(nrow(rows), length(values[[1]]))
+      if (nrow(rows) > 0) {
+        expected <- c(trivial_values(1), rep(trivial_values(2)[[2]], nrow(rows) - 1))
+        expect_equal(rows, data.frame(a = expected))
+      }
     },
 
     compare_affected = function(rows_affected, values) {
@@ -141,9 +162,13 @@ BindTester <- R6::R6Class(
 #'
 #' @return `[function(n)]`\cr A function with one argument `n` that
 #'   returns a vector of length `n` with placeholders of the specified format.
-#'   Examples: `?, ?, ?, ...`, `$1, $2, $3, ...`, `:a, :b, :c`
 #'
 #' @keywords internal
+#' @examples
+#' body(DBItest:::make_placeholder_fun("?"))
+#' DBItest:::make_placeholder_fun("?")(2)
+#' DBItest:::make_placeholder_fun("$1")(3)
+#' DBItest:::make_placeholder_fun(":name")(5)
 make_placeholder_fun <- function(pattern) {
   format_rx <- "^(.)(.*)$"
 
@@ -156,7 +181,7 @@ make_placeholder_fun <- function(pattern) {
 
   if (kind == "") {
     eval(bquote(
-      function(n) .(character)
+      function(n) rep(.(character), n)
     ))
   } else if (kind == "1") {
     eval(bquote(
@@ -172,4 +197,8 @@ make_placeholder_fun <- function(pattern) {
   } else {
     stop("Pattern must be any character, optionally followed by 1 or name. Examples: $1, :name", call. = FALSE)
   }
+}
+
+is_na_or_null <- function(x) {
+  identical(x, list(NULL)) || any(is.na(x))
 }

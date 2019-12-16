@@ -1,7 +1,8 @@
 #' spec_sql_write_table
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
+#' @importFrom lubridate with_tz
 spec_sql_write_table <- list(
   write_table_formals = function(ctx) {
     # <establish formals of described functions>
@@ -59,7 +60,7 @@ spec_sql_write_table <- list(
   #' or invalid connection.
   write_table_invalid_connection = function(ctx) {
     with_invalid_connection({
-      expect_error(dbListTables(con, "test", data.frame(a = 1)))
+      expect_error(dbWriteTable(con, "test", data.frame(a = 1)))
     })
   },
 
@@ -115,7 +116,7 @@ spec_sql_write_table <- list(
   #' The following arguments are not part of the `dbWriteTable()` generic
   #' (to improve compatibility across backends)
   #' but are part of the DBI specification:
-  #' - `row.names` (default: `NA`)
+  #' - `row.names` (default: `FALSE`)
   #' - `overwrite` (default: `FALSE`)
   #' - `append` (default: `FALSE`)
   #' - `field.types` (default: `NULL`)
@@ -326,17 +327,7 @@ spec_sql_write_table <- list(
       tbl_in <- data.frame(a = c(seq(1, 3, by = 0.5)))
       test_table_roundtrip(con, tbl_in)
     })
-  },
-
-  #'   (also with `Inf` and `NaN` values,
-  roundtrip_numeric_special = function(ctx) {
-    with_connection({
-      tbl_in <- data.frame(a = c(seq(1, 3, by = 0.5), -Inf, Inf, NaN))
-      tbl_exp <- tbl_in
-      #' the latter are translated to `NA`)
-      tbl_exp$a[is.nan(tbl_exp$a)] <- NA_real_
-      test_table_roundtrip(con, tbl_in, tbl_exp)
-    })
+  #'   (the behavior for `Inf` and `NaN` is not specified)
   },
 
   #' - logical
@@ -363,14 +354,14 @@ spec_sql_write_table <- list(
     })
   },
 
-  #' - 64-bit values (using `"bigint"` as field type);
+  #' - 64-bit values (using `"bigint"` as field type); the result can be
   roundtrip_64_bit_numeric = function(ctx) {
     with_connection({
       tbl_in <- data.frame(a = c(-1e14, 1e15))
       test_table_roundtrip(
         con, tbl_in,
         transform = function(tbl_out) {
-          #' the result can be converted to a numeric, which may lose precision,
+          #'     - converted to a numeric, which may lose precision,
           tbl_out$a <- as.numeric(tbl_out$a)
           tbl_out
         },
@@ -387,8 +378,8 @@ spec_sql_write_table <- list(
       test_table_roundtrip(
         con, tbl_in, tbl_exp,
         transform = function(tbl_out) {
-          # ' or to character, which gives the full decimal representation as a
-          # ' character vector
+          #'     - converted a character vector, which gives the full decimal
+          #'       representation
           tbl_out$a <- as.character(tbl_out$a)
           tbl_out
         },
@@ -397,10 +388,26 @@ spec_sql_write_table <- list(
     })
   },
 
+  roundtrip_64_bit_roundtrip = function(ctx) {
+    with_connection({
+      tbl_in <- data.frame(a = c(-1e14, 1e15))
+      tbl_out <- with_remove_test_table(
+        {
+          dbWriteTable(con, "test", tbl_in, field.types = c(a = "BIGINT"))
+          dbReadTable(con, "test")
+        }
+      )
+      tbl_exp <- tbl_out
+      #'     - written to another table and read again unchanged
+      test_table_roundtrip(con, tbl_out, tbl_exp)
+    })
+  },
+
   #' - character (in both UTF-8
   roundtrip_character = function(ctx) {
     with_connection({
       tbl_in <- data.frame(
+        id = seq_along(texts),
         a = c(texts),
         stringsAsFactors = FALSE
       )
@@ -458,13 +465,13 @@ spec_sql_write_table <- list(
     }
 
     with_connection({
-      tbl_in <- data.frame(id = 1L, a = I(list(as.raw(1:10))))
+      tbl_in <- data.frame(id = 1L, a = I(list(as.raw(0:10))))
       tbl_exp <- tbl_in
-      tbl_exp$a <- blob::as.blob(unclass(tbl_in$a))
+      tbl_exp$a <- blob::as_blob(unclass(tbl_in$a))
       test_table_roundtrip(
         con, tbl_in, tbl_exp,
         transform = function(tbl_out) {
-          tbl_out$a <- blob::as.blob(tbl_out$a)
+          tbl_out$a <- blob::as_blob(tbl_out$a)
           tbl_out
         }
       )
@@ -479,11 +486,11 @@ spec_sql_write_table <- list(
     }
 
     with_connection({
-      tbl_in <- data.frame(id = 1L, a = blob::blob(as.raw(1:10)))
+      tbl_in <- data.frame(id = 1L, a = blob::blob(as.raw(0:10)))
       test_table_roundtrip(
         con, tbl_in,
         transform = function(tbl_out) {
-          tbl_out$a <- blob::as.blob(tbl_out$a)
+          tbl_out$a <- blob::as_blob(tbl_out$a)
           tbl_out
         }
       )
@@ -523,14 +530,14 @@ spec_sql_write_table <- list(
       tbl_in <- data.frame(a = c(now + 1:5) - now)
 
       tbl_exp <- tbl_in
-      tbl_exp$a <- hms::as.hms(tbl_exp$a)
+      tbl_exp$a <- hms::as_hms(tbl_exp$a)
 
       test_table_roundtrip(
         con, tbl_in, tbl_exp,
         transform = function(tbl_out) {
           #'   returned as objects that inherit from `difftime`)
           expect_is(tbl_out$a, "difftime")
-          tbl_out$a <- hms::as.hms(tbl_out$a)
+          tbl_out$a <- hms::as_hms(tbl_out$a)
           tbl_out
         }
       )
@@ -546,14 +553,30 @@ spec_sql_write_table <- list(
 
     with_connection({
       #'   returned as `POSIXct`
-      #'   with time zone support)
-      tbl_in <- data.frame(id = 1:5)
-      tbl_in$a <- round(Sys.time()) + c(1, 60, 3600, 86400, NA)
-      tbl_in$b <- as.POSIXct(tbl_in$a, tz = "GMT")
-      tbl_in$c <- as.POSIXct(tbl_in$a, tz = "PST8PDT")
-      tbl_in$d <- as.POSIXct(tbl_in$a, tz = "UTC")
+      local <- round(Sys.time()) +
+        c(
+          1, 60, 3600, 86400,
+          86400 * 90, 86400 * 180, 86400 * 270,
+          1e9, 5e9
+        )
+      attr(local, "tzone") <- NULL
+      tbl_in <- data.frame(id = seq_along(local))
+      tbl_in$local <- local
+      tbl_in$GMT <- lubridate::with_tz(local, tzone = "GMT")
+      tbl_in$PST8PDT <- lubridate::with_tz(local, tzone = "PST8PDT")
+      tbl_in$UTC <- lubridate::with_tz(local, tzone = "UTC")
 
-      test_table_roundtrip(con, tbl_in)
+      #'   respecting the time zone but not necessarily preserving the
+      #'   input time zone)
+      test_table_roundtrip(
+        con, tbl_in,
+        transform = function(out) {
+          dates <- vapply(out, inherits, "POSIXt", FUN.VALUE = logical(1L))
+          zoned <- dates & (names(out) != "local")
+          out[zoned] <- Map(lubridate::with_tz, out[zoned], names(out)[zoned])
+          out
+        }
+      )
     })
   },
 
@@ -581,11 +604,20 @@ spec_sql_write_table <- list(
   #' It indicates the SQL data type to be used for a new column.
   roundtrip_field_types = function(ctx) {
     with_connection({
-      tbl_in <- data.frame(a = numeric())
-      tbl_exp <- data.frame(a = integer())
+      tbl_in <- data.frame(a = numeric(), b = character())
+      #' If a column is missed from `field.types`, the type is inferred
+      #' from the input data with [dbDataType()].
+      tbl_exp <- data.frame(a = integer(), b = character())
       test_table_roundtrip(
         con, tbl_in, tbl_exp,
         field.types = c(a = "INTEGER")
+      )
+
+      tbl_in <- data.frame(a = numeric(), b = integer())
+      tbl_exp <- data.frame(a = integer(), b = numeric())
+      test_table_roundtrip(
+        con, tbl_in, tbl_exp,
+        field.types = c(b = "REAL", a = "INTEGER")
       )
     })
   },
@@ -716,6 +748,21 @@ spec_sql_write_table <- list(
     })
   },
 
+  write_table_row_names_default = function(ctx) {
+    #'
+    #' The default is `row.names = FALSE`.
+    with_connection({
+      with_remove_test_table(name = "mtcars", {
+        mtcars_in <- datasets::mtcars
+        dbWriteTable(con, "mtcars", mtcars_in)
+        mtcars_out <- check_df(dbReadTable(con, "mtcars", row.names = FALSE))
+
+        expect_false("row_names" %in% names(mtcars_out))
+        expect_equal_df(mtcars_out, unrowname(mtcars_in))
+      })
+    })
+  },
+
   NULL
 )
 
@@ -725,7 +772,8 @@ test_table_roundtrip <- function(...) {
   test_table_roundtrip_one(..., .add_na = "below")
 }
 
-test_table_roundtrip_one <- function(con, tbl_in, tbl_expected = tbl_in, transform = identity, name = "test", field.types = NULL, .add_na = "none") {
+test_table_roundtrip_one <- function(con, tbl_in, tbl_expected = tbl_in, transform = identity,
+                                     name = "test", field.types = NULL, use_append = FALSE, .add_na = "none") {
   force(tbl_expected)
   if (.add_na == "above") {
     tbl_in <- add_na_above(tbl_in)
@@ -735,8 +783,13 @@ test_table_roundtrip_one <- function(con, tbl_in, tbl_expected = tbl_in, transfo
     tbl_expected <- add_na_below(tbl_expected)
   }
 
-  with_remove_test_table(name = dbQuoteIdentifier(con, name), {
-    dbWriteTable(con, name, tbl_in, field.types = field.types)
+  with_remove_test_table(name = name, {
+    if (use_append) {
+      dbCreateTable(con, name, field.types %||% tbl_in)
+      dbAppendTable(con, name, tbl_in)
+    } else {
+      dbWriteTable(con, name, tbl_in, field.types = field.types)
+    }
 
     tbl_out <- check_df(dbReadTable(con, name, check.names = FALSE))
     tbl_out <- transform(tbl_out)
@@ -745,11 +798,13 @@ test_table_roundtrip_one <- function(con, tbl_in, tbl_expected = tbl_in, transfo
 }
 
 add_na_above <- function(tbl) {
-  tbl <- rbind(tbl, tbl[nrow(tbl) + 1L, , drop = FALSE])
+  idx <- c(NA, seq_len(nrow(tbl)))
+  tbl <- tbl[idx, , drop = FALSE]
   unrowname(tbl)
 }
 
 add_na_below <- function(tbl) {
-  tbl <- rbind(tbl[nrow(tbl) + 1L, , drop = FALSE], tbl)
+  idx <- c(seq_len(nrow(tbl)), NA)
+  tbl <- tbl[idx, , drop = FALSE]
   unrowname(tbl)
 }

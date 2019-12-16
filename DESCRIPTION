@@ -1,28 +1,35 @@
 Package: DBItest
-Title: Testing 'DBI' Back Ends
-Version: 1.5-2
-Date: 2018-01-26
-Authors@R: c(
-      person(given = "Kirill", family = "Müller", role = c("aut", "cre"), email = "krlmlr+r@mailbox.org"),
-      person("RStudio", role = "cph"),
-      person("R Consortium", role = "fnd")
-    )
+Title: Testing 'DBI' 'Backends'
+Version: 1.7.0
+Date: 2019-12-15
+Authors@R: 
+    c(person(given = "Kirill",
+             family = "M\u00fcller",
+             role = c("aut", "cre"),
+             email = "krlmlr+r@mailbox.org",
+             comment = c(ORCID = "0000-0002-1416-3412")),
+      person(given = "RStudio",
+             role = "cph"),
+      person(given = "R Consortium",
+             role = "fnd"))
 Description: A helper that tests 'DBI' back ends for conformity
     to the interface.
-Depends: R (>= 3.0.0)
-Imports: blob, DBI (>= 0.4-9), desc, hms, methods, R6, testthat (>=
-        1.0.2), withr
-Suggests: knitr, lintr, rmarkdown
-License: LGPL (>= 2)
-LazyData: true
-Encoding: UTF-8
-BugReports: https://github.com/rstats-db/DBItest/issues
-RoxygenNote: 6.0.1
+License: LGPL (>= 2.1)
+URL: https://dbitest.r-dbi.org, https://github.com/r-dbi/DBItest
+BugReports: https://github.com/r-dbi/DBItest/issues
+Depends: R (>= 3.2.0)
+Imports: blob (>= 1.2.0), callr, DBI (>= 1.1.0), desc, hms (>= 0.5.0),
+        lubridate, methods, R6, rlang (>= 0.2.0), testthat (>= 2.0.0),
+        withr
+Suggests: debugme, devtools, knitr, lintr, rmarkdown, RSQLite
 VignetteBuilder: knitr
+Encoding: UTF-8
+KeepSource: true
+LazyData: true
+RoxygenNote: 7.0.2
 Collate: 'DBItest.R' 'context.R' 'expectations.R' 'import-dbi.R'
-        'import-testthat.R' 'run.R' 's4.R' 'spec.R'
-        'spec-getting-started.R' 'spec-compliance-methods.R'
-        'spec-driver-constructor.R' 'spec-driver-class.R'
+        'import-testthat.R' 'run.R' 's4.R' 'spec-getting-started.R'
+        'spec-compliance-methods.R' 'spec-driver-constructor.R'
         'spec-driver-data-type.R' 'spec-connection-data-type.R'
         'spec-result-create-table-with-data-type.R'
         'spec-driver-connect.R' 'spec-connection-disconnect.R'
@@ -30,11 +37,14 @@ Collate: 'DBItest.R' 'context.R' 'expectations.R' 'import-dbi.R'
         'spec-result-roundtrip.R' 'spec-result-clear-result.R'
         'spec-result-get-query.R' 'spec-result-send-statement.R'
         'spec-result-execute.R' 'spec-sql-quote-string.R'
-        'spec-sql-quote-identifier.R' 'spec-sql-read-table.R'
+        'spec-sql-quote-literal.R' 'spec-sql-quote-identifier.R'
+        'spec-sql-unquote-identifier.R' 'spec-sql-read-table.R'
+        'spec-sql-create-table.R' 'spec-sql-append-table.R'
         'spec-sql-write-table.R' 'spec-sql-list-tables.R'
         'spec-sql-exists-table.R' 'spec-sql-remove-table.R'
-        'spec-meta-bind-runner.R' 'spec-meta-bind-tester-extra.R'
-        'spec-meta-bind.R' 'spec-meta-bind-.R' 'spec-meta-is-valid.R'
+        'spec-sql-list-objects.R' 'spec-meta-bind-runner.R'
+        'spec-meta-bind-tester-extra.R' 'spec-meta-bind.R'
+        'spec-meta-bind-.R' 'spec-meta-is-valid.R'
         'spec-meta-has-completed.R' 'spec-meta-get-statement.R'
         'spec-meta-get-row-count.R' 'spec-meta-get-rows-affected.R'
         'spec-transaction-begin-commit-rollback.R'
@@ -48,12 +58,12 @@ Collate: 'DBItest.R' 'context.R' 'expectations.R' 'import-dbi.R'
         'test-driver.R' 'test-connection.R' 'test-result.R'
         'test-sql.R' 'test-meta.R' 'test-transaction.R'
         'test-compliance.R' 'test-stress.R' 'tweaks.R' 'utf8.R'
-        'utils.R'
+        'utils.R' 'zzz.R'
 NeedsCompilation: no
-Packaged: 2018-01-25 19:46:48 UTC; muelleki
-Author: Kirill Müller [aut, cre],
+Packaged: 2019-12-16 21:40:26 UTC; kirill
+Author: Kirill Müller [aut, cre] (<https://orcid.org/0000-0002-1416-3412>),
   RStudio [cph],
   R Consortium [fnd]
 Maintainer: Kirill Müller <krlmlr+r@mailbox.org>
 Repository: CRAN
-Date/Publication: 2018-01-25 19:54:58 UTC
+Date/Publication: 2019-12-16 22:20:02 UTC

@@ -1,7 +1,7 @@
 #' spec_result_get_query
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 spec_result_get_query <- list(
   get_query_formals = function(ctx) {
     # <establish formals of described functions>
@@ -15,20 +15,21 @@ spec_result_get_query <- list(
   #' even if the result is a single value
   get_query_atomic = function(ctx) {
     with_connection({
-      query <- "SELECT 1 as a"
+      query <- trivial_query()
 
       rows <- check_df(dbGetQuery(con, query))
-      expect_identical(rows, data.frame(a=1L))
+      expect_equal(rows, data.frame(a = 1.5))
     })
   },
 
   #' or has one
   get_query_one_row = function(ctx) {
     with_connection({
-      query <- "SELECT 1 as a, 2 as b, 3 as c"
+      query <- trivial_query(3, letters[1:3])
+      result <- trivial_df(3, letters[1:3])
 
       rows <- check_df(dbGetQuery(con, query))
-      expect_identical(rows, data.frame(a=1L, b=2L, c=3L))
+      expect_identical(rows, result)
     })
   },
 
@@ -49,21 +50,21 @@ spec_result_get_query <- list(
   #' An error is raised when issuing a query over a closed
   get_query_closed_connection = function(ctx) {
     with_closed_connection({
-      expect_error(dbGetQuery(con, "SELECT 1"))
+      expect_error(dbGetQuery(con, trivial_query()))
     })
   },
 
   #' or invalid connection,
   get_query_invalid_connection = function(ctx) {
     with_invalid_connection({
-      expect_error(dbGetQuery(con, "SELECT 1"))
+      expect_error(dbGetQuery(con, trivial_query()))
     })
   },
 
   #' if the syntax of the query is invalid,
   get_query_syntax_error = function(ctx) {
     with_connection({
-      expect_error(dbGetQuery(con, "SELECT"))
+      expect_error(dbGetQuery(con, "SELLECT"))
     })
   },
 
@@ -80,22 +81,22 @@ spec_result_get_query <- list(
   #' greater or equal to -1 or Inf, an error is raised,
   get_query_n_bad = function(ctx) {
     with_connection({
-      query <- "SELECT 1 as a"
-      expect_error(dbGetQuery(con, query, -2))
-      expect_error(dbGetQuery(con, query, 1.5))
-      expect_error(dbGetQuery(con, query, integer()))
-      expect_error(dbGetQuery(con, query, 1:3))
-      expect_error(dbGetQuery(con, query, NA_integer_))
+      query <- trivial_query()
+      expect_error(dbGetQuery(con, query, n = -2))
+      expect_error(dbGetQuery(con, query, n = 1.5))
+      expect_error(dbGetQuery(con, query, n = integer()))
+      expect_error(dbGetQuery(con, query, n = 1:3))
+      expect_error(dbGetQuery(con, query, n = NA_integer_))
     })
   },
 
   #' but a subsequent call to `dbGetQuery()` with proper `n` argument succeeds.
   get_query_good_after_bad_n = function(ctx) {
     with_connection({
-      query <- "SELECT 1 as a"
-      expect_error(dbGetQuery(con, query, NA_integer_))
+      query <- trivial_query()
+      expect_error(dbGetQuery(con, query, n = NA_integer_))
       rows <- check_df(dbGetQuery(con, query))
-      expect_identical(rows, data.frame(a = 1L))
+      expect_equal(rows, data.frame(a = 1.5))
     })
   },
 
@@ -104,31 +105,47 @@ spec_result_get_query <- list(
   #' (to improve compatibility across backends)
   #' but are part of the DBI specification:
   #' - `n` (default: -1)
-  #' - `params` (TBD)
+  #' - `params` (default: `NULL`)
+  #' - `immediate` (default: `NULL`)
   #'
   #' They must be provided as named arguments.
   #' See the "Specification" and "Value" sections for details on their usage.
 
   #' @section Specification:
-  #' Fetching multi-row queries with one
-  get_query_multi_row_single_column = function(ctx) {
+  #'
+  #' A column named `row_names` is treated like any other column.
+  get_query_row_names = function(ctx) {
     with_connection({
-      query <- union(
-        .ctx = ctx, paste("SELECT", 1:3, "AS a"), .order_by = "a")
+      query <- trivial_query(column = "row_names")
+      result <- trivial_df(column = "row_names")
 
       rows <- check_df(dbGetQuery(con, query))
-      expect_identical(rows, data.frame(a = 1:3))
+      expect_identical(rows, result)
+      expect_identical(.row_names_info(rows), -1L)
     })
   },
 
-  #' or more columns be default returns the entire result.
+  #'
+  #' The `n` argument specifies the number of rows to be fetched.
+  #' If omitted, fetching multi-row queries with one
+  get_query_multi_row_single_column = function(ctx) {
+    with_connection({
+      query <- trivial_query(3, .ctx = ctx, .order_by = "a")
+      result <- trivial_df(3)
+
+      rows <- check_df(dbGetQuery(con, query))
+      expect_identical(rows, result)
+    })
+  },
+
+  #' or more columns returns the entire result.
   get_query_multi_row_multi_column = function(ctx) {
     with_connection({
       query <- union(
-        .ctx = ctx, paste("SELECT", 1:5, "AS a,", 4:0, "AS b"), .order_by = "a")
+        .ctx = ctx, paste("SELECT", 1:5 + 0.5, "AS a,", 4:0 + 0.5, "AS b"), .order_by = "a")
 
       rows <- check_df(dbGetQuery(con, query))
-      expect_identical(rows, data.frame(a = 1:5, b = 4:0))
+      expect_identical(rows, data.frame(a = 1:5 + 0.5, b = 4:0 + 0.5))
     })
   },
 
@@ -136,35 +153,35 @@ spec_result_get_query <- list(
   #' and also returns the full result.
   get_query_n_multi_row_inf = function(ctx) {
     with_connection({
-      query <- union(
-        .ctx = ctx, paste("SELECT", 1:3, "AS a"), .order_by = "a")
+      query <- trivial_query(3, .ctx = ctx, .order_by = "a")
+      result <- trivial_df(3)
 
       rows <- check_df(dbGetQuery(con, query, n = Inf))
-      expect_identical(rows, data.frame(a = 1:3))
+      expect_identical(rows, result)
     })
   },
 
-  #' If more rows than available are fetched, the result is returned in full
-  #' without warning.
+  #' If more rows than available are fetched (by passing a too large value for
+  #' `n`), the result is returned in full without warning.
   get_query_n_more_rows = function(ctx) {
     with_connection({
-      query <- union(
-        .ctx = ctx, paste("SELECT", 1:3, "AS a"), .order_by = "a")
+      query <- trivial_query(3, .ctx = ctx, .order_by = "a")
+      result <- trivial_df(3)
 
       rows <- check_df(dbGetQuery(con, query, n = 5L))
-      expect_identical(rows, data.frame(a = 1:3))
+      expect_identical(rows, result)
     })
   },
 
-  #' If zero rows are fetched, the columns of the data frame are still fully
+  #' If zero rows are requested, the columns of the data frame are still fully
   #' typed.
   get_query_n_zero_rows = function(ctx) {
     with_connection({
-      query <- union(
-        .ctx = ctx, paste("SELECT", 1:3, "AS a"), .order_by = "a")
+      query <- trivial_query(3, .ctx = ctx, .order_by = "a")
+      result <- trivial_df(0)
 
       rows <- check_df(dbGetQuery(con, query, n = 0L))
-      expect_identical(rows, data.frame(a=integer()))
+      expect_identical(rows, result)
     })
   },
 
@@ -172,23 +189,64 @@ spec_result_get_query <- list(
   #' no warning is issued.
   get_query_n_incomplete = function(ctx) {
     with_connection({
-      query <- union(
-        .ctx = ctx, paste("SELECT", 1:3, "AS a"), .order_by = "a")
+      query <- trivial_query(3, .ctx = ctx, .order_by = "a")
+      result <- trivial_df(2)
 
       rows <- check_df(dbGetQuery(con, query, n = 2L))
-      expect_identical(rows, data.frame(a = 1:2))
+      expect_identical(rows, result)
     })
   },
 
   #'
-  #' A column named `row_names` is treated like any other column.
-  get_query_row_names = function(ctx) {
-    with_connection({
-      query <- "SELECT 1 AS row_names"
+  #' The `param` argument allows passing query parameters, see [dbBind()] for details.
+  get_query_params = function(ctx) {
+    placeholder_funs <- get_placeholder_funs(ctx)
 
-      rows <- check_df(dbGetQuery(con, query))
-      expect_identical(rows, data.frame(row_names = 1L))
-      expect_identical(.row_names_info(rows), -1L)
+    with_connection({
+      for (placeholder_fun in placeholder_funs) {
+        placeholder <- placeholder_fun(1)
+        query <- paste0("SELECT ", placeholder, " + 1.0 AS a")
+        values <- trivial_values(3) - 1
+        params <- stats::setNames(list(values), names(placeholder))
+        ret <- dbGetQuery(con, query, params = params)
+        expect_equal(ret, trivial_df(3), info = placeholder)
+      }
+    })
+  },
+
+  #' @section Specification for the `immediate` argument:
+  #'
+  #' The `immediate` argument supports distinguishing between "direct"
+  #' and "prepared" APIs offered by many database drivers.
+  #' Passing `immediate = TRUE` leads to immediate execution of the
+  #' query or statement, via the "direct" API (if supported by the driver).
+  #' The default `NULL` means that the backend should choose whatever API
+  #' makes the most sense for the database, and (if relevant) tries the
+  #' other API if the first attempt fails. A successful second attempt
+  #' should result in a message that suggests passing the correct
+  #' `immediate` argument.
+  #' Examples for possible behaviors:
+  #' 1. DBI backend defaults to `immediate = TRUE` internally
+  #'     1. A query without parameters is passed: query is executed
+  #'     1. A query with parameters is passed:
+  #'         1. `params` not given: rejected immediately by the database
+  #'            because of a syntax error in the query, the backend tries
+  #'            `immediate = FALSE` (and gives a message)
+  #'         1. `params` given: query is executed using `immediate = FALSE`
+  #' 1. DBI backend defaults to `immediate = FALSE` internally
+  #'     1. A query without parameters is passed:
+  #'         1. simple query: query is executed
+  #'         1. "special" query (such as setting a config options): fails,
+  #'            the backend tries `immediate = TRUE` (and gives a message)
+  #'     1. A query with parameters is passed:
+  #'         1. `params` not given: waiting for parameters via [dbBind()]
+  #'         1. `params` given: query is executed
+  get_query_immediate = function(ctx) {
+    with_connection({
+      with_remove_test_table({
+        res <- expect_visible(dbGetQuery(con, trivial_query(), immediate = TRUE))
+        expect_s3_class(res, "data.frame")
+      })
     })
   },
 

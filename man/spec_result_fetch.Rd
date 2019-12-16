@@ -25,7 +25,7 @@ spec_result_fetch
 \section{Specification}{
 
 Fetching multi-row queries with one
-or more columns be default returns the entire result.
+or more columns by default returns the entire result.
 Multi-row queries can also be fetched progressively
 by passing a whole number (\link{integer}
 or \link{numeric})
@@ -44,3 +44,4 @@ no warning is issued when clearing the result set.
 A column named \code{row_names} is treated like any other column.
 }
 
+\keyword{internal}

@@ -1,7 +1,7 @@
 #' spec_meta_has_completed
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 spec_meta_has_completed <- list(
   has_completed_formals = function(ctx) {
     # <establish formals of described functions>
@@ -14,7 +14,7 @@ spec_meta_has_completed <- list(
     with_connection({
       #' For a query initiated by [dbSendQuery()] with non-empty result set,
       with_result(
-        dbSendQuery(con, "SELECT 1"),
+        dbSendQuery(con, trivial_query()),
         {
           #' `dbHasCompleted()` returns `FALSE` initially
           expect_false(expect_visible(dbHasCompleted(res)))
@@ -33,7 +33,7 @@ spec_meta_has_completed <- list(
       with_remove_test_table(name = name, {
         #' For a query initiated by [dbSendStatement()],
         with_result(
-          dbSendQuery(con, paste0("CREATE TABLE ", name, " (a integer)")),
+          dbSendStatement(con, paste0("CREATE TABLE ", name, " (a integer)")),
           {
             #' `dbHasCompleted()` always returns `TRUE`.
             expect_true(expect_visible(dbHasCompleted(res)))
@@ -45,7 +45,7 @@ spec_meta_has_completed <- list(
 
   has_completed_error = function(ctx) {
     with_connection({
-      res <- dbSendQuery(con, "SELECT 1")
+      res <- dbSendQuery(con, trivial_query())
       dbClearResult(res)
       #' Attempting to query completion status for a result set cleared with
       #' [dbClearResult()] gives an error.
@@ -71,7 +71,7 @@ spec_meta_has_completed <- list(
 
       #' Similarly, for a query with a result set of length n,
       with_result(
-        dbSendQuery(con, "SELECT 1"),
+        dbSendQuery(con, trivial_query()),
         {
           #' the return value is unspecified after fetching n rows,
           check_df(dbFetch(res, 1))

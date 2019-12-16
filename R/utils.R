@@ -15,17 +15,15 @@ utils::globalVariables("con2")
 # evaluates the code inside local() after defining a variable "con"
 # (can be overridden by specifying con argument)
 # that points to a newly opened connection. Disconnects on exit.
-with_connection <- function(code, con = "con", env = parent.frame()) {
-  code_sub <- substitute(code)
+with_connection <- function(code, con = "con", extra_args = list(), env = parent.frame()) {
+  quo <- enquo(code)
 
   con <- as.name(con)
 
-  eval(bquote({
-    .(con) <- connect(ctx)
-    on.exit(try_silent(dbDisconnect(.(con))), add = TRUE)
-    local(.(code_sub))
-  }
-  ), envir = env)
+  data <- list2(!!con := connect(get("ctx", env), !!!extra_args))
+  on.exit(try_silent(dbDisconnect(data[[1]])), add = TRUE)
+
+  eval_tidy(quo, data)
 }
 
 # Expects a variable "ctx" in the environment env,
@@ -125,6 +123,7 @@ with_rollback_on_error <- function(code, con = "con", env = parent.frame()) {
 
 get_iris <- function(ctx) {
   datasets_iris <- datasets::iris
+  iris$Species <- as.character(iris$Species)
   if (isTRUE(ctx$tweaks$strict_identifier)) {
     names(datasets_iris) <- gsub(".", "_", names(datasets_iris), fixed = TRUE)
   }

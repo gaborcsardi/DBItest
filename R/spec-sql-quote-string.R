@@ -1,7 +1,7 @@
 #' spec_sql_quote_string
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 spec_sql_quote_string <- list(
   quote_string_formals = function(ctx) {
     # <establish formals of described functions>
@@ -111,10 +111,10 @@ spec_sql_quote_string <- list(
       quoted_na <- dbQuoteString(con, as.character(na))
 
       query <- paste0("SELECT ",
-                      null, " as null_return,",
-                      na, "as na_return,",
-                      quoted_null, "as quoted_null,",
-                      quoted_na, "as quoted_na")
+                      null, " AS null_return,",
+                      na, " AS na_return,",
+                      quoted_null, " AS quoted_null,",
+                      quoted_na, " AS quoted_na")
 
       #' If `x` is `NA`, the result must merely satisfy [is.na()].
       rows <- check_df(dbGetQuery(con, query))
@@ -135,6 +135,23 @@ spec_sql_quote_string <- list(
       rows <- check_df(dbGetQuery(con, paste0("SELECT * FROM (SELECT 1) a WHERE ", null, " IS NULL")))
       #' returns one row.
       expect_equal(nrow(rows), 1L)
+    })
+  },
+
+  quote_string_error = function(ctx) {
+    with_connection({
+      #'
+      #' Passing a numeric,
+      expect_error(dbQuoteString(con, c(1, 2, 3)))
+      #' integer,
+      expect_error(dbQuoteString(con, 1:3))
+      #' logical,
+      expect_error(dbQuoteString(con, c(TRUE, FALSE)))
+      #' or raw vector,
+      expect_error(dbQuoteString(con, as.raw(1:3)))
+      #' or a list
+      expect_error(dbQuoteString(con, as.list(1:3)))
+      #' for the `x` argument raises an error.
     })
   },
 

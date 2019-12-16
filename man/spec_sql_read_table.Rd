@@ -7,7 +7,7 @@
 \value{
 \code{dbReadTable()} returns a data frame that contains the complete data
 from the remote table, effectively the result of calling \code{\link[=dbGetQuery]{dbGetQuery()}}
-with \code{SELECT * FROM <name>}.
+with \verb{SELECT * FROM <name>}.
 An error is raised if the table does not exist.
 An empty table is returned as a data frame with zero rows.
 
@@ -52,7 +52,7 @@ The following arguments are not part of the \code{dbReadTable()} generic
 (to improve compatibility across backends)
 but are part of the DBI specification:
 \itemize{
-\item \code{row.names}
+\item \code{row.names} (default: \code{FALSE})
 \item \code{check.names}
 }
 
@@ -72,3 +72,4 @@ perhaps by calling \code{dbQuoteIdentifier(conn, x = name)}
 }
 }
 
+\keyword{internal}

@@ -1,7 +1,7 @@
 #' spec_sql_list_tables
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 spec_sql_list_tables <- list(
   list_tables_formals = function(ctx) {
     # <establish formals of described functions>
@@ -34,7 +34,7 @@ spec_sql_list_tables <- list(
 
       with_remove_test_table({
         #' including temporary tables if supported by the database.
-        if (isTRUE(ctx$tweaks$temporary_tables)) {
+        if (isTRUE(ctx$tweaks$temporary_tables) && isTRUE(ctx$tweaks$list_temporary_tables)) {
           dbWriteTable(con, "test", data.frame(a = 1L), temporary = TRUE)
           tables <- dbListTables(con)
           expect_true("test" %in% tables)
@@ -78,12 +78,6 @@ spec_sql_list_tables <- list(
       expect_error(dbListTables(con))
     })
   },
-
-  #' @section Additional arguments:
-  #' TBD: `temporary = NA`
-  #'
-  #' This must be provided as named argument.
-  #' See the "Specification" section for details on their usage.
 
   NULL
 )

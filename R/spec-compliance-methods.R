@@ -1,5 +1,5 @@
-#' @template dbispec-sub
 #' @format NULL
+#' @importFrom callr r
 #' @section DBI classes and methods:
 spec_compliance_methods <- list(
   #' A backend defines three classes,
@@ -41,13 +41,45 @@ spec_compliance_methods <- list(
     })
   },
 
-  #' All methods have an ellipsis `...` in their formals.
+  #' All methods defined in \pkg{DBI} are reexported (so that the package can
+  #' be used without having to attach \pkg{DBI}),
+  reexport = function(ctx) {
+    pkg <- package_name(ctx)
+
+    where <- asNamespace(pkg)
+    dbi <- asNamespace("DBI")
+
+    dbi_generics <- grep("^[.]__T__db", getNamespaceExports(dbi), value = TRUE)
+    . <- gsub("^[.]__T__(.*):DBI$", "\\1", dbi_generics)
+    . <- setdiff(., c("dbListConnections", "dbSetDataMappings", "dbGetException", "dbCallProc", "dbGetConnectArgs"))
+    . <- c(., "Id")
+    dbi_names <- .
+
+    exported_names <- callr::r(
+      function(pkg) {
+        tryCatch(
+          getNamespaceExports(getNamespace(pkg)),
+          error = function(e) character()
+        )
+      },
+      args = list(pkg = pkg)
+    )
+
+    # Guard against scenarios where package is not installed
+    if (length(exported_names) > 0) {
+      missing <- setdiff(dbi_names, exported_names)
+      expect_equal(paste(missing, collapse = ", "), "")
+    }
+  },
+
+  #' and have an ellipsis `...` in their formals for extensibility.
   ellipsis = function(ctx) {
     pkg <- package_name(ctx)
 
     where <- asNamespace(pkg)
 
     methods <- s4_methods(where, function(x) x == "DBI")
+    methods <- methods[grep("^db", names(methods))]
     Map(expect_ellipsis_in_formals, methods, names(methods))
   },
 
@@ -75,7 +107,6 @@ expect_ellipsis_in_formals <- function(method, name) {
 
 key_methods <- list(
   Driver = list(
-    "dbGetInfo" = NULL,
     "dbConnect" = NULL,
     "dbDataType" = NULL
   ),

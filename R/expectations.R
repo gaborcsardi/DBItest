@@ -11,7 +11,7 @@ all_args_have_default_values <- function() {
     args <- formals(x)
     args <- args[names(args) != "..."]
     expect_true(
-      all(vapply(args, as.character, character(1L)) != ""),
+      all(vapply(args, function(x) if (is.null(x)) "NULL" else as.character(x), character(1L)) != ""),
       "has arguments without default values")
   }
 }
@@ -52,14 +52,14 @@ expect_equal_df <- function(actual, expected) {
   list_cols <- vapply(expected, is.list, logical(1L))
 
   if (!any(list_cols)) {
-    order_actual <- order(actual)
-    order_expected <- order(expected)
+    order_actual <- do.call(order, actual)
+    order_expected <- do.call(order, expected)
   } else {
     expect_false(all(list_cols))
     expect_equal(anyDuplicated(actual[!list_cols]), 0)
     expect_equal(anyDuplicated(expected[!list_cols]), 0)
-    order_actual <- order(actual[!list_cols])
-    order_expected <- order(expected[!list_cols])
+    order_actual <- do.call(order, actual[!list_cols])
+    order_expected <- do.call(order, expected[!list_cols])
   }
 
   has_rownames_actual <- is.character(attr(actual, "row.names"))

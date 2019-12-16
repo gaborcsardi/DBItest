@@ -1,7 +1,7 @@
 #' spec_meta_get_row_count
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 spec_meta_get_row_count <- list(
   get_row_count_formals = function(ctx) {
     # <establish formals of described functions>
@@ -13,7 +13,7 @@ spec_meta_get_row_count <- list(
   #' the number of rows fetched so far.
   row_count_query = function(ctx) {
     with_connection({
-      query <- "SELECT 1 as a"
+      query <- trivial_query()
       with_result(
         #' After calling [dbSendQuery()],
         dbSendQuery(con, query),
@@ -31,21 +31,21 @@ spec_meta_get_row_count <- list(
     })
 
     with_connection({
-      query <- union(.ctx = ctx, "SELECT 1 as a", "SELECT 2", "SELECT 3")
+      query <- union(.ctx = ctx, trivial_query(), "SELECT 2", "SELECT 3")
       with_result(
         dbSendQuery(con, query),
         {
-          rc <- dbGetRowCount(res)
-          expect_equal(rc, 0L)
+          rc1 <- dbGetRowCount(res)
+          expect_equal(rc1, 0L)
           #' Fetching a limited number of rows
           check_df(dbFetch(res, 2L))
           #' increases the number of rows by the number of rows returned,
-          rc <- dbGetRowCount(res)
-          expect_equal(rc, 2L)
+          rc2 <- dbGetRowCount(res)
+          expect_equal(rc2, 2L)
           #' even if fetching past the end of the result set.
           check_df(dbFetch(res, 2L))
-          rc <- dbGetRowCount(res)
-          expect_equal(rc, 3L)
+          rc3 <- dbGetRowCount(res)
+          expect_equal(rc3, 3L)
         }
       )
     })
@@ -96,7 +96,7 @@ spec_meta_get_row_count <- list(
 
   get_row_count_error = function(ctx) {
     with_connection({
-      res <- dbSendQuery(con, "SELECT 1")
+      res <- dbSendQuery(con, trivial_query())
       dbClearResult(res)
       #' Attempting to get the row count for a result set cleared with
       #' [dbClearResult()] gives an error.

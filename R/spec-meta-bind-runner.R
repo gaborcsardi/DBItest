@@ -4,17 +4,17 @@ run_bind_tester <- list()
 #' @name spec_meta_bind
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 #' @section Specification:
 #' \pkg{DBI} clients execute parametrized statements as follows:
 #'
 run_bind_tester$fun <- function() {
-  if ((extra_obj$requires_names() %in% TRUE) && is.null(names(placeholder))) {
+  if ((extra_obj$requires_names() %in% TRUE) && is.null(names(placeholder_fun(1)))) {
     # test only valid for named placeholders
     return()
   }
 
-  if ((extra_obj$requires_names() %in% FALSE) && !is.null(names(placeholder))) {
+  if ((extra_obj$requires_names() %in% FALSE) && !is.null(names(placeholder_fun(1)))) {
     # test only valid for unnamed placeholders
     return()
   }
@@ -55,8 +55,9 @@ run_bind_tester$fun <- function() {
   #'    depending on the kind of placeholders used.
   #'    Named values are matched to named parameters, unnamed values
   #'    are matched by position in the list of parameters.
-  if (!is.null(names(placeholder))) {
-    names(bind_values) <- names(placeholder)
+
+  if (!is.null(names(placeholder_fun(1)))) {
+    names(bind_values) <- names(placeholder_fun(length(bind_values)))
   }
   #'    All elements in this list must have the same lengths and contain values
   #'    supported by the backend; a [data.frame] is internally stored as such
@@ -64,6 +65,7 @@ run_bind_tester$fun <- function() {
   #'    The parameter list is passed to a call to `dbBind()` on the `DBIResult`
   #'    object.
   bind(res, bind_values)
+  if (!is.na(extra_obj$bind_error())) return()
 
   # Safety net: returning early if dbBind() should have thrown an error but
   # didn't
@@ -78,7 +80,7 @@ run_bind_tester$fun <- function() {
     #'       call [dbFetch()].
     if (is_query()) {
       rows <- check_df(dbFetch(res))
-      compare(rows, values)
+      compare(rows)
     } else {
       #'     - For statements issued by `dbSendStatements()`,
       #'       call [dbGetRowsAffected()].

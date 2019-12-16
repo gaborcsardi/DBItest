@@ -40,12 +40,17 @@
 #' @include spec-meta-bind.R
 #' @include spec-meta-bind-tester-extra.R
 #' @include spec-meta-bind-runner.R
+#' @include spec-sql-list-objects.R
 #' @include spec-sql-remove-table.R
 #' @include spec-sql-exists-table.R
 #' @include spec-sql-list-tables.R
 #' @include spec-sql-write-table.R
+#' @include spec-sql-append-table.R
+#' @include spec-sql-create-table.R
 #' @include spec-sql-read-table.R
+#' @include spec-sql-unquote-identifier.R
 #' @include spec-sql-quote-identifier.R
+#' @include spec-sql-quote-literal.R
 #' @include spec-sql-quote-string.R
 #' @include spec-result-execute.R
 #' @include spec-result-send-statement.R
@@ -59,11 +64,8 @@
 #' @include spec-result-create-table-with-data-type.R
 #' @include spec-connection-data-type.R
 #' @include spec-driver-data-type.R
-##### Class specs
-#' @include spec-driver-class.R
 ##### Soft specs
 #' @include spec-driver-constructor.R
 #' @include spec-compliance-methods.R
 #' @include spec-getting-started.R
-#' @include spec.R
 NULL

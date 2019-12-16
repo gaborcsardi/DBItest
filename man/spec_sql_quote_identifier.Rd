@@ -8,29 +8,30 @@
 \code{dbQuoteIdentifier()} returns an object that can be coerced to \link{character},
 of the same length as the input.
 For an empty character vector this function returns a length-0 object.
-An error is raised if the input contains \code{NA},
-but not for an empty string.
-
+The names of the input argument are preserved in the output.
 When passing the returned object again to \code{dbQuoteIdentifier()}
 as \code{x}
 argument, it is returned unchanged.
 Passing objects of class \link{SQL} should also return them unchanged.
 (For backends it may be most convenient to return \link{SQL} objects
 to achieve this behavior, but this is not required.)
+
+An error is raised if the input contains \code{NA},
+but not for an empty string.
 }
 \description{
 spec_sql_quote_identifier
 }
 \section{Specification}{
 
-Calling \code{\link[=dbGetQuery]{dbGetQuery()}} for a query of the format \code{SELECT 1 AS ...}
+Calling \code{\link[=dbGetQuery]{dbGetQuery()}} for a query of the format \verb{SELECT 1 AS ...}
 returns a data frame with the identifier, unquoted, as column name.
 Quoted identifiers can be used as table and column names in SQL queries,
-in particular in queries like \code{SELECT 1 AS ...}
-and \code{SELECT * FROM (SELECT 1) ...}.
+in particular in queries like \verb{SELECT 1 AS ...}
+and \verb{SELECT * FROM (SELECT 1) ...}.
 The method must use a quoting mechanism that is unambiguously different
 from the quoting mechanism used for strings, so that a query like
-\code{SELECT ... FROM (SELECT 1 AS ...)}
+\verb{SELECT ... FROM (SELECT 1 AS ...)}
 throws an error if the column names do not match.
 
 The method can quote column names that
@@ -45,3 +46,4 @@ should be performed only when executing a query,
 and not by \code{dbQuoteIdentifier()}.
 }
 
+\keyword{internal}

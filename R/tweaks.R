@@ -1,13 +1,21 @@
 #' Tweaks for DBI tests
 #'
-#' TBD.
+#' The tweaks are a way to control the behavior of certain tests. Currently,
+#' you need to search the \pkg{DBItest} source code to understand which tests
+#' are affected by which tweaks. This function is usually called to set the
+#' `tweaks` argument in a [make_context()] call.
+#'
 #' @name tweaks
 #' @aliases NULL
+#' @examples
+#' \dontrun{
+#' make_context(..., tweaks = tweaks(strict_identifier = TRUE))
+#' }
 { # nolint
   tweak_names <- alist(
     #' @param ... `[any]`\cr
     #'   Unknown tweaks are accepted, with a warning.  The ellipsis
-    #'   also asserts that all arguments are named.
+    #'   also makes sure that you only can pass named arguments.
     "..." = ,
 
     #' @param constructor_name `[character(1)]`\cr
@@ -66,6 +74,11 @@
     #'   string to a timestamp value.
     "timestamp_cast" = function(x) paste0("timestamp('", x, "')"),
 
+    #' @param blob_cast `[function(character)]`\cr
+    #'   A vectorized function that creates an SQL expression for coercing a
+    #'   string to a blob value.
+    "blob_cast" = identity,
+
     #' @param date_typed `[logical(1L)]`\cr
     #'   Set to `FALSE` if the DBMS doesn't support a dedicated type for dates.
     "date_typed" = TRUE,
@@ -82,6 +95,15 @@
     #' @param temporary_tables `[logical(1L)]`\cr
     #'   Set to `FALSE` if the DBMS doesn't support temporary tables.
     "temporary_tables" = TRUE,
+
+    #' @param list_temporary_tables `[logical(1L)]`\cr
+    #'   Set to `FALSE` if the DBMS doesn't support listing temporary tables.
+    "list_temporary_tables" = TRUE,
+
+    #' @param is_null_check `[function(character)]`\cr
+    #'   A vectorized function that creates an SQL expression for checking if a
+    #'   value is `NULL`.
+    "is_null_check" = function(x) paste0("(", x, " IS NULL)"),
 
     # Dummy argument
     NULL

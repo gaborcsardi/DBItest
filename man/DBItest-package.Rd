@@ -4,10 +4,10 @@
 \name{DBItest-package}
 \alias{DBItest}
 \alias{DBItest-package}
-\title{DBItest: Testing 'DBI' Back Ends}
+\title{DBItest: Testing 'DBI' 'Backends'}
 \description{
 A helper that tests 'DBI' back ends for conformity
-to the interface.
+    to the interface.
 }
 \details{
 The two most important functions are \code{\link[=make_context]{make_context()}} and
@@ -20,7 +20,9 @@ See the package's vignette for more details.
 \seealso{
 Useful links:
 \itemize{
-  \item Report bugs at \url{https://github.com/rstats-db/DBItest/issues}
+  \item \url{https://dbitest.r-dbi.org}
+  \item \url{https://github.com/r-dbi/DBItest}
+  \item Report bugs at \url{https://github.com/r-dbi/DBItest/issues}
 }
 
 }

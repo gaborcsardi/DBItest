@@ -7,14 +7,19 @@
 make_placeholder_fun(pattern)
 }
 \arguments{
-\item{pattern}{\code{[character(1)]}\cr Any character, optionally followed by \code{1} or \code{name}. Examples: \code{"?"}, \code{"$1"}, \code{":name"}}
+\item{pattern}{\verb{[character(1)]}\cr Any character, optionally followed by \code{1} or \code{name}. Examples: \code{"?"}, \code{"$1"}, \code{":name"}}
 }
 \value{
-\code{[function(n)]}\cr A function with one argument \code{n} that
+\verb{[function(n)]}\cr A function with one argument \code{n} that
 returns a vector of length \code{n} with placeholders of the specified format.
-Examples: \code{?, ?, ?, ...}, \code{$1, $2, $3, ...}, \code{:a, :b, :c}
 }
 \description{
 For internal use by the \code{placeholder_format} tweak.
+}
+\examples{
+body(DBItest:::make_placeholder_fun("?"))
+DBItest:::make_placeholder_fun("?")(2)
+DBItest:::make_placeholder_fun("$1")(3)
+DBItest:::make_placeholder_fun(":name")(5)
 }
 \keyword{internal}

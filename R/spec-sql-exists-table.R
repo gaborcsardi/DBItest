@@ -1,7 +1,7 @@
 #' spec_sql_exists_table
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 spec_sql_exists_table <- list(
   exists_table_formals = function(ctx) {
     # <establish formals of described functions>
@@ -61,12 +61,6 @@ spec_sql_exists_table <- list(
     })
   },
 
-  #' @section Additional arguments:
-  #' TBD: `temporary = NA`
-  #'
-  #' This must be provided as named argument.
-  #' See the "Specification" section for details on their usage.
-
   #' @section Specification:
   #' The `name` argument is processed as follows,
   exists_table_name = function(ctx) {
@@ -106,7 +100,7 @@ spec_sql_exists_table <- list(
         {
           dbWriteTable(con, name, data.frame(a = 1))
           for (table_name in dbListTables(con)) {
-            expect_true(dbExistsTable(con, table_name))
+            eval(bquote(expect_true(dbExistsTable(con, .(table_name)))))
           }
         }
       )

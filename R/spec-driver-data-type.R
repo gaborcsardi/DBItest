@@ -1,7 +1,7 @@
 #' spec_driver_data_type
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 #' @inherit test_data_type
 spec_driver_data_type <- list(
   data_type_formals = function(ctx) {
@@ -18,6 +18,7 @@ spec_driver_data_type <- list(
 
 #' test_data_type
 #' @param ctx,dbObj Arguments to internal test function
+#' @keywords internal
 test_data_type <- function(ctx, dbObj) {
   #' @return
   #' `dbDataType()` returns the SQL type that corresponds to the `obj` argument
@@ -74,11 +75,11 @@ test_data_type <- function(ctx, dbObj) {
     #' If the database supports blobs,
     if (!isTRUE(ctx$tweaks$omit_blob_tests)) {
       #' this method also must accept lists of [raw] vectors,
-      list(as.raw(1:10))
+      list(as.raw(0:10))
     },
     if (!isTRUE(ctx$tweaks$omit_blob_tests)) {
       #' and [blob::blob] objects.
-      blob::blob(as.raw(1:10))
+      blob::blob(as.raw(0:10))
     }
   )
 

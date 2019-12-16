@@ -1,7 +1,7 @@
 #' spec_sql_read_table
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 spec_sql_read_table <- list(
   read_table_formals = function(ctx) {
     # <establish formals of described functions>
@@ -264,7 +264,7 @@ spec_sql_read_table <- list(
   #' The following arguments are not part of the `dbReadTable()` generic
   #' (to improve compatibility across backends)
   #' but are part of the DBI specification:
-  #' - `row.names`
+  #' - `row.names` (default: `FALSE`)
   #' - `check.names`
   #'
   #' They must be provided as named arguments.

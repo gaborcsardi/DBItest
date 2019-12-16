@@ -3,7 +3,6 @@
 \docType{data}
 \name{spec_meta_bind}
 \alias{spec_meta_bind}
-\alias{spec_meta_bind}
 \title{spec_meta_bind}
 \value{
 \code{dbBind()} returns the result set,
@@ -96,12 +95,14 @@ for both queries
 and data manipulation statements,
 even if no results are fetched between calls to \code{dbBind()}.
 
-At least the following data types are accepted:
+If the placeholders in the query are named,
+their order in the \code{params} argument is not important.
+
+At least the following data types are accepted on input (including \link{NA}):
 \itemize{
 \item \link{integer}
 \item \link{numeric}
-\item \link{logical} for Boolean values (some backends may return an integer)
-\item \link{NA}
+\item \link{logical} for Boolean values
 \item \link{character}
 \item \link{factor} (bound as character,
 with warning)
@@ -113,3 +114,4 @@ with warning)
 }
 }
 
+\keyword{internal}

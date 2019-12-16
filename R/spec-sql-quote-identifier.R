@@ -1,7 +1,7 @@
 #' spec_sql_quote_identifier
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 spec_sql_quote_identifier <- list(
   quote_identifier_formals = function(ctx) {
     # <establish formals of described functions>
@@ -33,14 +33,14 @@ spec_sql_quote_identifier <- list(
       empty_out <- dbQuoteIdentifier(con, empty)
       expect_equal(length(empty_out), 0L)
 
-      #' An error is raised if the input contains `NA`,
-      expect_error(dbQuoteIdentifier(con, NA))
-      expect_error(dbQuoteIdentifier(con, NA_character_))
-      expect_error(dbQuoteIdentifier(con, c("a", NA_character_)))
-      #' but not for an empty string.
-      expect_error(dbQuoteIdentifier(con, ""), NA)
+      #' The names of the input argument are preserved in the output.
+      unnamed <- letters
+      unnamed_out <- dbQuoteIdentifier(con, unnamed)
+      expect_null(names(unnamed_out))
+      named <- stats::setNames(LETTERS[1:3], letters[1:3])
+      named_out <- dbQuoteIdentifier(con, named)
+      expect_equal(names(named_out), letters[1:3])
 
-      #'
       #' When passing the returned object again to `dbQuoteIdentifier()`
       #' as `x`
       #' argument, it is returned unchanged.
@@ -57,6 +57,18 @@ spec_sql_quote_identifier <- list(
     })
   },
 
+  quote_identifier_error = function(ctx) {
+    with_connection({
+      #'
+      #' An error is raised if the input contains `NA`,
+      expect_error(dbQuoteIdentifier(con, NA))
+      expect_error(dbQuoteIdentifier(con, NA_character_))
+      expect_error(dbQuoteIdentifier(con, c("a", NA_character_)))
+      #' but not for an empty string.
+      expect_error(dbQuoteIdentifier(con, ""), NA)
+    })
+  },
+
   #' @section Specification:
   #' Calling [dbGetQuery()] for a query of the format `SELECT 1 AS ...`
   #' returns a data frame with the identifier, unquoted, as column name.
@@ -66,15 +78,15 @@ spec_sql_quote_identifier <- list(
       simple <- dbQuoteIdentifier(con, "simple")
 
       #' in particular in queries like `SELECT 1 AS ...`
-      query <- paste0("SELECT 1 AS", simple)
+      query <- trivial_query(column = simple)
       rows <- check_df(dbGetQuery(con, query))
       expect_identical(names(rows), "simple")
-      expect_identical(unlist(unname(rows)), 1L)
+      expect_identical(unlist(unname(rows)), 1.5)
 
       #' and `SELECT * FROM (SELECT 1) ...`.
-      query <- paste0("SELECT * FROM (SELECT 1) ", simple)
+      query <- paste0("SELECT * FROM (", trivial_query(), ") ", simple)
       rows <- check_df(dbGetQuery(con, query))
-      expect_identical(unlist(unname(rows)), 1L)
+      expect_identical(unlist(unname(rows)), 1.5)
     })
   },
 
@@ -127,15 +139,15 @@ spec_sql_quote_identifier <- list(
       #' should be performed only when executing a query,
       #' and not by `dbQuoteIdentifier()`.
       query <- paste0("SELECT ",
-                      "2 as", with_space, ",",
-                      "3 as", with_dot, ",",
-                      "4 as", with_comma, ",",
-                      "5 as", with_quote, ",",
-                      "6 as", quoted_empty, ",",
-                      "7 as", quoted_with_space, ",",
-                      "8 as", quoted_with_dot, ",",
-                      "9 as", quoted_with_comma, ",",
-                      "10 as", quoted_with_quote)
+                      "2.5 as", with_space, ",",
+                      "3.5 as", with_dot, ",",
+                      "4.5 as", with_comma, ",",
+                      "5.5 as", with_quote, ",",
+                      "6.5 as", quoted_empty, ",",
+                      "7.5 as", quoted_with_space, ",",
+                      "8.5 as", quoted_with_dot, ",",
+                      "9.5 as", quoted_with_comma, ",",
+                      "10.5 as", quoted_with_quote)
 
       rows <- check_df(dbGetQuery(con, query))
       expect_identical(names(rows),
@@ -144,7 +156,7 @@ spec_sql_quote_identifier <- list(
                          as.character(empty), as.character(with_space),
                          as.character(with_dot), as.character(with_comma),
                          as.character(with_quote)))
-      expect_identical(unlist(unname(rows)), 2:10)
+      expect_identical(unlist(unname(rows)), 2:10 + 0.5)
     })
   },
 

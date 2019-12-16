@@ -1,7 +1,7 @@
 #' spec_meta_get_rows_affected
 #' @usage NULL
 #' @format NULL
-#' @keywords NULL
+#' @keywords internal
 spec_meta_get_rows_affected <- list(
   get_rows_affected_formals = function(ctx) {
     # <establish formals of described functions>
@@ -39,7 +39,7 @@ spec_meta_get_rows_affected <- list(
 
   rows_affected_query = function(ctx) {
     with_connection({
-      query <- "SELECT 1 as a"
+      query <- trivial_query()
       with_result(
         #' For queries issued with [dbSendQuery()],
         dbSendQuery(con, query),
