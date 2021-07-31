@@ -1,3 +1,6 @@
+## ----setup, include = FALSE---------------------------------------------------
+knitr::opts_chunk$set(error = (getRversion() < "3.5"))
+
 ## ----make-context-------------------------------------------------------------
 library(DBItest)
 
@@ -25,9 +28,12 @@ invisible(make_context(
   default_skip = default_skip
 ))
 
-## ----simple-------------------------------------------------------------------
+## ----simple, error = !rlang::is_installed("dblog")----------------------------
+DBItest::test_some("get_query_atomic")
+
+## ----location, error = !rlang::is_installed("dblog")--------------------------
 testthat::with_reporter(
-  c("location", "stop"),
+  c("location", "fail"),
   DBItest::test_some("get_query_atomic")
 )
 
