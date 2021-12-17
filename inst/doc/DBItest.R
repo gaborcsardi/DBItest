@@ -28,10 +28,10 @@ invisible(make_context(
   default_skip = default_skip
 ))
 
-## ----simple, error = !rlang::is_installed("dblog")----------------------------
+## ----simple, error = (getRversion() < "3.5") || !rlang::is_installed("dblog")----
 DBItest::test_some("get_query_atomic")
 
-## ----location, error = !rlang::is_installed("dblog")--------------------------
+## ----location, error = (getRversion() < "3.5") || !rlang::is_installed("dblog")----
 testthat::with_reporter(
   c("location", "fail"),
   DBItest::test_some("get_query_atomic")

@@ -1,7 +1,8 @@
 #' spec_meta_bind
+#' @family meta specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_meta_bind <- list(
   bind_formals = function() {
     # <establish formals of described functions>
@@ -25,14 +26,13 @@ spec_meta_bind <- list(
     #' [dbSendStatement()].
     test_select_bind(con, ctx, 1L, extra = extra, query = FALSE)
   },
-  #
+  #'
+  #' @section Failure modes:
   bind_empty = function(con) {
-    with_result(
-      #' Calling `dbBind()` for a query without parameters
-      dbSendQuery(con, trivial_query()),
-      #' raises an error.
-      expect_error(dbBind(res, list()))
-    )
+    #' Calling `dbBind()` for a query without parameters
+    res <- local_result(dbSendQuery(con, trivial_query()))
+    #' raises an error.
+    expect_error(dbBind(res, list()))
   },
   #
   bind_too_many = function(ctx, con) {
@@ -246,6 +246,11 @@ spec_meta_bind <- list(
     test_select_bind(con, ctx, c(texts, NA))
   },
 
+  #'   (also with special characters such as spaces, newlines, quotes, and backslashes)
+  bind_character_escape = function(ctx, con) {
+    test_select_bind(con, ctx, c(" ", "\n", "\r", "\b", "'", '"', "[", "]", "\\", NA))
+  },
+
   #' - [factor] (bound as character,
   bind_factor = function(ctx, con) {
     #' with warning)
@@ -305,17 +310,27 @@ spec_meta_bind <- list(
       skip("tweak: !time_typed")
     }
 
-    data_in <- as.difftime(c(1:3, NA), units = "secs")
+    data_in <- as.difftime(as.numeric(c(1:3, NA)), units = "secs")
     test_select_bind(con, ctx, data_in)
   },
 
-  #'   (also with units other than seconds)
+  #'   (also with units other than seconds
   bind_time_hours = function(ctx, con) {
     if (!isTRUE(ctx$tweaks$time_typed)) {
       skip("tweak: !time_typed")
     }
 
-    data_in <- as.difftime(c(1:3, NA), units = "hours")
+    data_in <- as.difftime(as.numeric(c(1:3, NA)), units = "hours")
+    test_select_bind(con, ctx, data_in)
+  },
+
+  #'   and with the value stored as integer)
+  bind_time_minutes_integer = function(ctx, con) {
+    if (!isTRUE(ctx$tweaks$time_typed)) {
+      skip("tweak: !time_typed")
+    }
+
+    data_in <- as.difftime(c(1:3, NA), units = "mins")
     test_select_bind(con, ctx, data_in)
   },
 

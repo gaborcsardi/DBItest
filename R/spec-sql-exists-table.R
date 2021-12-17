@@ -1,7 +1,8 @@
 #' spec_sql_exists_table
+#' @family sql specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_sql_exists_table <- list(
   exists_table_formals = function() {
     # <establish formals of described functions>
@@ -13,8 +14,8 @@ spec_sql_exists_table <- list(
   #' specified by the `name` argument exists, `FALSE` otherwise.
   exists_table = function(ctx, con, table_name = "dbit05") {
     expect_false(expect_visible(dbExistsTable(con, table_name)))
-    iris <- get_iris(ctx)
-    dbWriteTable(con, table_name, iris)
+    penguins <- get_penguins(ctx)
+    dbWriteTable(con, table_name, penguins)
 
     expect_true(expect_visible(dbExistsTable(con, table_name)))
   },
@@ -24,7 +25,7 @@ spec_sql_exists_table <- list(
     expect_false(expect_visible(dbExistsTable(con, table_name)))
   },
 
-  #' 
+  #'
   #' This includes temporary tables if supported by the database.
   exists_table_temporary = function(ctx, con, table_name) {
     expect_false(expect_visible(dbExistsTable(con, table_name)))
@@ -36,6 +37,7 @@ spec_sql_exists_table <- list(
   },
 
   #'
+  #' @section Failure modes:
   #' An error is raised when calling this method for a closed
   exists_table_closed_connection = function(ctx, closed_con) {
     expect_error(dbExistsTable(closed_con, "test"))
@@ -66,19 +68,18 @@ spec_sql_exists_table <- list(
     }
 
     for (table_name in table_names) {
-      with_remove_test_table(name = table_name, {
-        expect_false(dbExistsTable(con, table_name))
+      local_remove_test_table(con, table_name)
+      expect_false(dbExistsTable(con, table_name))
 
-        test_in <- data.frame(a = 1L)
-        dbWriteTable(con, table_name, test_in)
+      test_in <- data.frame(a = 1L)
+      dbWriteTable(con, table_name, test_in)
 
-        #' - If an unquoted table name as string: `dbExistsTable()` will do the
-        #'   quoting,
-        expect_true(dbExistsTable(con, table_name))
-        #'   perhaps by calling `dbQuoteIdentifier(conn, x = name)`
-        #' - If the result of a call to [dbQuoteIdentifier()]: no more quoting is done
-        expect_true(dbExistsTable(con, dbQuoteIdentifier(con, table_name)))
-      })
+      #' - If an unquoted table name as string: `dbExistsTable()` will do the
+      #'   quoting,
+      expect_true(dbExistsTable(con, table_name))
+      #'   perhaps by calling `dbQuoteIdentifier(conn, x = name)`
+      #' - If the result of a call to [dbQuoteIdentifier()]: no more quoting is done
+      expect_true(dbExistsTable(con, dbQuoteIdentifier(con, table_name)))
     }
   },
 

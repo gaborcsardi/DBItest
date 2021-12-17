@@ -1,7 +1,8 @@
 #' spec_driver_constructor
+#' @family driver specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 #' @section Construction of the DBIDriver object:
 spec_driver_constructor <- list(
   constructor = function(ctx) {
@@ -30,10 +31,10 @@ spec_driver_constructor <- list(
     constructor <- get(constructor_name, mode = "function", pkg_env)
 
     #' that is callable without arguments.
-    expect_that(constructor, all_args_have_default_values())
+    expect_all_args_have_default_values(constructor)
     #' DBI recommends to define a constructor with an empty argument list.
     if (!isTRUE(ctx$tweaks$constructor_relax_args)) {
-      expect_that(constructor, arglist_is_empty())
+      expect_arglist_is_empty(constructor)
     }
   },
   #

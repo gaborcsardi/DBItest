@@ -1,7 +1,8 @@
 #' spec_sql_list_objects
+#' @family sql specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_sql_list_objects <- list(
   list_objects_formals = function() {
     # <establish formals of described functions>
@@ -37,8 +38,8 @@ spec_sql_list_objects <- list(
     #' (if prefix is omitted).
 
     #' Tables added with [dbWriteTable()]
-    iris <- get_iris(ctx)
-    dbWriteTable(con, table_name, iris)
+    penguins <- get_penguins(ctx)
+    dbWriteTable(con, table_name, penguins)
 
     #' are part of the data frame.
     objects <- dbListObjects(con)
@@ -78,15 +79,16 @@ spec_sql_list_objects <- list(
     }
 
     for (table_name in table_names) {
-      with_remove_test_table(name = dbQuoteIdentifier(con, table_name), {
-        dbWriteTable(con, dbQuoteIdentifier(con, table_name), data.frame(a = 2L))
-        objects <- dbListObjects(con)
-        quoted_tables <- vapply(objects$table, dbQuoteIdentifier, conn = con, character(1))
-        expect_true(dbQuoteIdentifier(con, table_name) %in% quoted_tables)
-      })
+      local_remove_test_table(con, table_name)
+      dbWriteTable(con, dbQuoteIdentifier(con, table_name), data.frame(a = 2L))
+      objects <- dbListObjects(con)
+      quoted_tables <- vapply(objects$table, dbQuoteIdentifier, conn = con, character(1))
+      expect_true(dbQuoteIdentifier(con, table_name) %in% quoted_tables)
     }
   },
 
+  #'
+  #' @section Failure modes:
   #' An error is raised when calling this method for a closed
   list_objects_closed_connection = function(ctx, closed_con) {
     expect_error(dbListObjects(closed_con))
@@ -136,9 +138,9 @@ spec_sql_list_objects <- list(
     #' `prefix` argument set, all `table` values where `is_prefix` is
     #' `FALSE` can be used in a call to [dbExistsTable()] which returns
     #' `TRUE`.
-    for (schema in objects$table[objects$is_prefix]) {
+    for (schema in utils::head(objects$table[objects$is_prefix])) {
       sub_objects <- dbListObjects(con, prefix = schema)
-      for (sub_table in sub_objects$table[!sub_objects$is_prefix]) {
+      for (sub_table in utils::head(sub_objects$table[!sub_objects$is_prefix])) {
         # HACK HACK HACK for RMariaDB on OS X (#188)
         if (!identical(sub_table, Id(schema = "information_schema", table = "FILES"))) {
           # eval(bquote()) preserves the SQL class, even if it's not apparent

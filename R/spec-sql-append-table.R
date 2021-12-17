@@ -1,7 +1,8 @@
 #' spec_sql_append_table
+#' @family sql specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_sql_append_table <- list(
   append_table_formals = function() {
     # <establish formals of described functions>
@@ -21,6 +22,8 @@ spec_sql_append_table <- list(
     expect_true(is.numeric(ret))
   },
 
+  #'
+  #' @section Failure modes:
   #' If the table does not exist,
   append_table_missing = function(con, table_name) {
     expect_false(dbExistsTable(con, table_name))
@@ -29,13 +32,21 @@ spec_sql_append_table <- list(
     expect_error(dbAppendTable(con, table_name, data.frame(a = 2L)))
   },
 
-  #' or the data frame with the new data has different column names,
+  #' or the new data in `values` is not a data frame or has different column names,
   #' an error is raised; the remote table remains unchanged.
+  append_table_invalid_value = function(con, table_name) {
+    test_in <- trivial_df()
+    dbCreateTable(con, table_name, test_in)
+    expect_error(dbAppendTable(con, table_name, unclass(test_in)))
+
+    test_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(test_out, test_in[0, , drop = FALSE])
+  },
   append_table_append_incompatible = function(con, table_name) {
     test_in <- trivial_df()
     dbCreateTable(con, table_name, test_in)
     dbAppendTable(con, table_name, test_in)
-    expect_error(dbAppendTable(con, table_name, data.frame(b = 2L), append = TRUE))
+    expect_error(dbAppendTable(con, table_name, data.frame(b = 2L)))
 
     test_out <- check_df(dbReadTable(con, table_name))
     expect_equal_df(test_out, test_in)
@@ -72,50 +83,71 @@ spec_sql_append_table <- list(
   },
 
   #'
+  #' @section Specification:
   #' SQL keywords can be used freely in table names, column names, and data.
   append_roundtrip_keywords = function(con) {
     tbl_in <- data.frame(
-      SELECT = "UNIQUE", FROM = "JOIN", WHERE = "ORDER",
+      select = "unique", from = "join", where = "order",
       stringsAsFactors = FALSE
     )
-    test_table_roundtrip(use_append = TRUE, con, tbl_in, name = "EXISTS")
+    test_table_roundtrip(use_append = TRUE, con, tbl_in, name = "exists")
   },
 
-  #' Quotes, commas, and spaces can also be used in the data,
+  #' Quotes, commas, spaces, and other special characters such as newlines and tabs,
+  #' can also be used in the data,
+  append_roundtrip_quotes = function(ctx, con, table_name) {
+    tbl_in <- data.frame(
+      as.character(dbQuoteString(con, "")),
+      as.character(dbQuoteIdentifier(con, "")),
+      "with space",
+      "a,b", "a\nb", "a\tb", "a\rb", "a\bb",
+      "a\\Nb", "a\\tb", "a\\rb", "a\\bb", "a\\Zb",
+      stringsAsFactors = FALSE
+    )
+
+    names(tbl_in) <- letters[seq_along(tbl_in)]
+    test_table_roundtrip(con, tbl_in, use_append = TRUE)
+  },
+
   #' and, if the database supports non-syntactic identifiers,
-  #' also for table names and column names.
-  append_roundtrip_quotes = function(ctx, con) {
-    if (!isTRUE(ctx$tweaks$strict_identifier)) {
-      table_names <- c(
-        as.character(dbQuoteIdentifier(con, "")),
-        as.character(dbQuoteString(con, "")),
-        "with space",
-        ","
-      )
-    } else {
-      table_names <- "a"
+  #' also for table names
+  append_roundtrip_quotes_table_names = function(ctx, con) {
+    if (isTRUE(ctx$tweaks$strict_identifier)) {
+      skip("tweak: strict_identifier")
     }
+
+    table_names <- c(
+      as.character(dbQuoteIdentifier(con, "")),
+      as.character(dbQuoteString(con, "")),
+      "with space",
+      "a,b", "a\nb", "a\tb", "a\rb", "a\bb",
+      "a\\Nb", "a\\tb", "a\\rb", "a\\bb", "a\\Zb"
+    )
+
+    tbl_in <- trivial_df()
 
     for (table_name in table_names) {
-      tbl_in <- data.frame(
-        a = as.character(dbQuoteString(con, "")),
-        b = as.character(dbQuoteIdentifier(con, "")),
-        c = "with space",
-        d = ",",
-        stringsAsFactors = FALSE
-      )
-
-      if (!isTRUE(ctx$tweaks$strict_identifier)) {
-        names(tbl_in) <- c(
-          as.character(dbQuoteIdentifier(con, "")),
-          as.character(dbQuoteString(con, "")),
-          "with space",
-          ","
-        )
-      }
-
-      test_table_roundtrip(use_append = TRUE, con, tbl_in)
+      test_table_roundtrip_one(con, tbl_in, use_append = TRUE, .add_na = FALSE)
     }
+  },
+
+  #' and column names.
+  append_roundtrip_quotes_column_names = function(ctx, con) {
+    if (isTRUE(ctx$tweaks$strict_identifier)) {
+      skip("tweak: strict_identifier")
+    }
+
+    column_names <- c(
+      as.character(dbQuoteIdentifier(con, "")),
+      as.character(dbQuoteString(con, "")),
+      "with space",
+      "a,b", "a\nb", "a\tb", "a\rb", "a\bb",
+      "a\\nb", "a\\tb", "a\\rb", "a\\bb", "a\\zb"
+    )
+
+    tbl_in <- trivial_df(length(column_names), column_names)
+
+    test_table_roundtrip_one(con, tbl_in, use_append = TRUE, .add_na = FALSE)
   },
 
   #'
@@ -304,6 +336,34 @@ spec_sql_append_table <- list(
     )
   },
 
+  #'   also for dates prior to 1970 or 1900 or after 2038
+  append_roundtrip_date_extended = function(ctx, con) {
+    if (!isTRUE(ctx$tweaks$date_typed)) {
+      skip("tweak: !date_typed")
+    }
+
+    tbl_in <- data.frame(a = as_numeric_date(c(
+      "1811-11-11",
+      "1899-12-31",
+      "1900-01-01",
+      "1950-05-05",
+      "1969-12-31",
+      "1970-01-01",
+      "2037-01-01",
+      "2038-01-01",
+      "2040-01-01",
+      "2999-09-09"
+    )))
+    test_table_roundtrip(
+      use_append = TRUE,
+      con, tbl_in,
+      transform = function(tbl_out) {
+        expect_type(unclass(tbl_out$a), "double")
+        tbl_out
+      }
+    )
+  },
+
   #' - time
   append_roundtrip_time = function(ctx, con) {
     #'   (if supported by the database;
@@ -348,9 +408,50 @@ spec_sql_append_table <- list(
     attr(local, "tzone") <- ""
     tbl_in <- data.frame(id = seq_along(local))
     tbl_in$local <- local
-    tbl_in$GMT <- lubridate::with_tz(local, tzone = "GMT")
-    tbl_in$PST8PDT <- lubridate::with_tz(local, tzone = "PST8PDT")
-    tbl_in$UTC <- lubridate::with_tz(local, tzone = "UTC")
+    tbl_in$gmt <- lubridate::with_tz(local, tzone = "GMT")
+    tbl_in$pst8pdt <- lubridate::with_tz(local, tzone = "PST8PDT")
+    tbl_in$utc <- lubridate::with_tz(local, tzone = "UTC")
+
+    #'   respecting the time zone but not necessarily preserving the
+    #'   input time zone),
+    test_table_roundtrip(
+      use_append = TRUE,
+      con, tbl_in,
+      transform = function(out) {
+        dates <- vapply(out, inherits, "POSIXt", FUN.VALUE = logical(1L))
+        tz <- toupper(names(out))
+        tz[tz == "LOCAL"] <- ""
+        out[dates] <- Map(lubridate::with_tz, out[dates], tz[dates])
+        out
+      }
+    )
+  },
+
+  #'   also for timestamps prior to 1970 or 1900 or after 2038
+  append_roundtrip_timestamp_extended = function(ctx, con) {
+    if (!isTRUE(ctx$tweaks$timestamp_typed)) {
+      skip("tweak: !timestamp_typed")
+    }
+
+    local <- as.POSIXct(c(
+      "1811-11-11",
+      "1899-12-31",
+      "1900-01-01",
+      "1950-05-05",
+      "1969-12-31",
+      "1970-01-01",
+      "2037-01-01",
+      "2038-01-01",
+      "2040-01-01",
+      "2999-09-09"
+    ))
+
+    attr(local, "tzone") <- ""
+    tbl_in <- data.frame(id = seq_along(local))
+    tbl_in$local <- local
+    tbl_in$gmt <- lubridate::with_tz(local, tzone = "GMT")
+    tbl_in$pst8pdt <- lubridate::with_tz(local, tzone = "PST8PDT")
+    tbl_in$utc <- lubridate::with_tz(local, tzone = "UTC")
 
     #'   respecting the time zone but not necessarily preserving the
     #'   input time zone)
@@ -359,8 +460,8 @@ spec_sql_append_table <- list(
       con, tbl_in,
       transform = function(out) {
         dates <- vapply(out, inherits, "POSIXt", FUN.VALUE = logical(1L))
-        tz <- names(out)
-        tz[tz == "local"] <- ""
+        tz <- toupper(names(out))
+        tz[tz == "LOCAL"] <- ""
         out[dates] <- Map(lubridate::with_tz, out[dates], tz[dates])
         out
       }
@@ -395,22 +496,38 @@ spec_sql_append_table <- list(
 
     for (table_name in table_names) {
       test_in <- trivial_df()
-      with_remove_test_table(name = dbQuoteIdentifier(con, table_name), {
-        #' - If an unquoted table name as string: `dbAppendTable()` will do the quoting,
-        dbCreateTable(con, table_name, test_in)
-        dbAppendTable(con, table_name, test_in)
-        test_out <- check_df(dbReadTable(con, dbQuoteIdentifier(con, table_name)))
-        expect_equal_df(test_out, test_in)
-        #'   perhaps by calling `dbQuoteIdentifier(conn, x = name)`
-      })
 
-      with_remove_test_table(name = dbQuoteIdentifier(con, table_name), {
-        #' - If the result of a call to [dbQuoteIdentifier()]: no more quoting is done
-        dbCreateTable(con, dbQuoteIdentifier(con, table_name), test_in)
-        dbAppendTable(con, dbQuoteIdentifier(con, table_name), test_in)
-        test_out <- check_df(dbReadTable(con, table_name))
-        expect_equal_df(test_out, test_in)
-      })
+      local_remove_test_table(con, table_name)
+      #' - If an unquoted table name as string: `dbAppendTable()` will do the quoting,
+      dbCreateTable(con, table_name, test_in)
+      dbAppendTable(con, table_name, test_in)
+      test_out <- check_df(dbReadTable(con, dbQuoteIdentifier(con, table_name)))
+      expect_equal_df(test_out, test_in)
+      #'   perhaps by calling `dbQuoteIdentifier(conn, x = name)`
+    }
+  },
+
+  #' - If the result of a call to [dbQuoteIdentifier()]: no more quoting is done
+  append_table_name_quoted = function(ctx, con) {
+    if (as.package_version(ctx$tweaks$dbitest_version) < "1.7.2") {
+      skip(paste0("tweak: dbitest_version: ", ctx$tweaks$dbitest_version))
+    }
+
+    #' to support databases that allow non-syntactic names for their objects:
+    if (isTRUE(ctx$tweaks$strict_identifier)) {
+      table_names <- "a"
+    } else {
+      table_names <- c("a", "with spaces", "with,comma")
+    }
+
+    for (table_name in table_names) {
+      test_in <- trivial_df()
+
+      local_remove_test_table(con, table_name)
+      dbCreateTable(con, dbQuoteIdentifier(con, table_name), test_in)
+      dbAppendTable(con, dbQuoteIdentifier(con, table_name), test_in)
+      test_out <- check_df(dbReadTable(con, table_name))
+      expect_equal_df(test_out, test_in)
     }
   },
 
@@ -439,7 +556,9 @@ spec_sql_append_table <- list(
   },
   #
   append_table_row_names_non_null = function(con, table_name) {
-    #' All other values for the `row.names` argument
+    #'
+    #' @section Failure modes:
+    #' Passing a `value` argument different to `NULL` to the `row.names` argument
     mtcars_in <- datasets::mtcars
     dbCreateTable(con, table_name, mtcars_in)
 
@@ -450,8 +569,55 @@ spec_sql_append_table <- list(
     #' and a string)
     expect_error(dbAppendTable(con, table_name, mtcars_in, row.names = "make_model"))
 
-    #' raise an error.
+    #' raises an error.
   },
+
+  #'
+  #' @section Specification:
+  #' The `value` argument must be a data frame
+  append_table_value_df = function(con, table_name) {
+    test_in <- trivial_df()
+    dbCreateTable(con, table_name, test_in)
+    dbAppendTable(con, table_name, test_in)
+
+    test_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(test_out, test_in)
+  },
+
+  #' with a subset of the columns of the existing table.
+  append_table_value_subset = function(ctx, con, table_name) {
+    test_in <- trivial_df(3, letters[1:3])
+    dbCreateTable(con, table_name, test_in)
+    dbAppendTable(con, table_name, test_in[2])
+
+    test_out <- check_df(dbReadTable(con, table_name))
+
+    test_in[c(1, 3)] <- NA_real_
+    expect_equal_df(test_out, test_in)
+  },
+
+  #' The order of the columns does not matter.
+  append_table_value_shuffle = function(ctx, con, table_name) {
+    test_in <- trivial_df(3, letters[1:3])
+    dbCreateTable(con, table_name, test_in)
+    dbAppendTable(con, table_name, test_in[c(2, 3, 1)])
+
+    test_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(test_out, test_in)
+  },
+
+  #
+  append_table_value_shuffle_subset = function(ctx, con, table_name) {
+    test_in <- trivial_df(4, letters[1:4])
+    dbCreateTable(con, table_name, test_in)
+    dbAppendTable(con, table_name, test_in[c(4, 1, 3)])
+
+    test_out <- check_df(dbReadTable(con, table_name))
+
+    test_in[2] <- NA_real_
+    expect_equal_df(test_out, test_in)
+  },
+
   #
   NULL
 )

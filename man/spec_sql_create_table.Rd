@@ -6,6 +6,12 @@
 \title{spec_sql_create_table}
 \value{
 \code{dbCreateTable()} returns \code{TRUE}, invisibly.
+}
+\description{
+spec_sql_create_table
+}
+\section{Failure modes}{
+
 If the table exists, an error is raised; the remote table remains unchanged.
 
 An error is raised when calling this method for a closed
@@ -21,9 +27,7 @@ incompatible values,
 duplicate names)
 also raise an error.
 }
-\description{
-spec_sql_create_table
-}
+
 \section{Additional arguments}{
 
 The following arguments are not part of the \code{dbCreateTable()} generic
@@ -50,7 +54,8 @@ perhaps by calling \code{dbQuoteIdentifier(conn, x = name)}
 If the \code{temporary} argument is \code{TRUE}, the table is not available in a
 second connection and is gone after reconnecting.
 Not all backends support this argument.
-A regular, non-temporary table is visible in a second connection
+A regular, non-temporary table is visible in a second connection,
+in a pre-existing connection,
 and after reconnecting to the database.
 
 SQL keywords can be used freely in table names, column names, and data.
@@ -66,4 +71,19 @@ and a string)
 raise an error.
 }
 
-\keyword{internal}
+\seealso{
+Other sql specifications: 
+\code{\link{spec_sql_append_table}},
+\code{\link{spec_sql_exists_table}},
+\code{\link{spec_sql_list_fields}},
+\code{\link{spec_sql_list_objects}},
+\code{\link{spec_sql_list_tables}},
+\code{\link{spec_sql_quote_identifier}},
+\code{\link{spec_sql_quote_literal}},
+\code{\link{spec_sql_quote_string}},
+\code{\link{spec_sql_read_table}},
+\code{\link{spec_sql_remove_table}},
+\code{\link{spec_sql_unquote_identifier}},
+\code{\link{spec_sql_write_table}}
+}
+\concept{sql specifications}

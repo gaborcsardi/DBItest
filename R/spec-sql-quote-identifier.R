@@ -1,7 +1,8 @@
 #' spec_sql_quote_identifier
+#' @family sql specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_sql_quote_identifier <- list(
   quote_identifier_formals = function() {
     # <establish formals of described functions>
@@ -13,7 +14,7 @@ spec_sql_quote_identifier <- list(
     #' `dbQuoteIdentifier()` returns an object that can be coerced to [character],
     simple_out <- dbQuoteIdentifier(con, "simple")
     expect_error(as.character(simple_out), NA)
-    expect_is(as.character(simple_out), "character")
+    expect_type(as.character(simple_out), "character")
   },
   #
   quote_identifier_vectorized = function(ctx, con) {
@@ -52,7 +53,8 @@ spec_sql_quote_identifier <- list(
     #' (For backends it may be most convenient to return [SQL] objects
     #' to achieve this behavior, but this is not required.)
   },
-  #
+  #'
+  #' @section Failure modes:
   quote_identifier_error = function(ctx, con) {
     #'
     #' An error is raised if the input contains `NA`,

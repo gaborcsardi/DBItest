@@ -1,7 +1,8 @@
 #' spec_meta_get_statement
+#' @family meta specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_meta_get_statement <- list(
   get_statement_formals = function() {
     # <establish formals of described functions>
@@ -12,30 +13,23 @@ spec_meta_get_statement <- list(
   #' `dbGetStatement()` returns a string, the query used in
   get_statement_query = function(con) {
     query <- trivial_query()
-    with_result(
-      #' either [dbSendQuery()]
-      dbSendQuery(con, query),
-      {
-        s <- dbGetStatement(res)
-        expect_is(s, "character")
-        expect_identical(s, query)
-      }
-    )
+    #' either [dbSendQuery()]
+    res <- local_result(dbSendQuery(con, query))
+    s <- dbGetStatement(res)
+    expect_type(s, "character")
+    expect_identical(s, query)
   },
   #
   get_statement_statement = function(con, table_name) {
     query <- paste0("CREATE TABLE ", table_name, " (a integer)")
-    with_result(
-      #' or [dbSendStatement()].
-      dbSendStatement(con, query),
-      {
-        s <- dbGetStatement(res)
-        expect_is(s, "character")
-        expect_identical(s, query)
-      }
-    )
+    #' or [dbSendStatement()].
+    res <- local_result(dbSendStatement(con, query))
+    s <- dbGetStatement(res)
+    expect_type(s, "character")
+    expect_identical(s, query)
   },
-  #
+  #'
+  #' @section Failure modes:
   get_statement_error = function(con) {
     res <- dbSendQuery(con, trivial_query())
     dbClearResult(res)

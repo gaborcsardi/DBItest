@@ -1,7 +1,8 @@
 #' spec_sql_write_table
+#' @family sql specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 #' @importFrom lubridate with_tz
 spec_sql_write_table <- list(
   write_table_formals = function() {
@@ -15,6 +16,8 @@ spec_sql_write_table <- list(
     expect_invisible_true(dbWriteTable(con, table_name, data.frame(a = 1L)))
   },
 
+  #'
+  #' @section Failure modes:
   #' If the table exists, and both `append` and `overwrite` arguments are unset,
   write_table_overwrite = function(con, table_name) {
     test_in <- data.frame(a = 1L)
@@ -116,65 +119,123 @@ spec_sql_write_table <- list(
 
     for (table_name in table_names) {
       test_in <- data.frame(a = 1)
-      with_remove_test_table(name = dbQuoteIdentifier(con, table_name), {
-        #' - If an unquoted table name as string: `dbWriteTable()` will do the quoting,
-        dbWriteTable(con, table_name, test_in)
-        test_out <- check_df(dbReadTable(con, dbQuoteIdentifier(con, table_name)))
-        expect_equal_df(test_out, test_in)
-        #'   perhaps by calling `dbQuoteIdentifier(conn, x = name)`
-      })
-
-      with_remove_test_table(name = dbQuoteIdentifier(con, table_name), {
-        #' - If the result of a call to [dbQuoteIdentifier()]: no more quoting is done
-        dbWriteTable(con, dbQuoteIdentifier(con, table_name), test_in)
-        test_out <- check_df(dbReadTable(con, table_name))
-        expect_equal_df(test_out, test_in)
-      })
+      local_remove_test_table(con, table_name)
+      #' - If an unquoted table name as string: `dbWriteTable()` will do the quoting,
+      dbWriteTable(con, table_name, test_in)
+      test_out <- check_df(dbReadTable(con, dbQuoteIdentifier(con, table_name)))
+      expect_equal_df(test_out, test_in)
+      #'   perhaps by calling `dbQuoteIdentifier(conn, x = name)`
     }
+  },
+
+  #' - If the result of a call to [dbQuoteIdentifier()]: no more quoting is done
+  write_table_name_quoted = function(ctx, con) {
+    if (as.package_version(ctx$tweaks$dbitest_version) < "1.7.2") {
+      skip(paste0("tweak: dbitest_version: ", ctx$tweaks$dbitest_version))
+    }
+
+    if (isTRUE(ctx$tweaks$strict_identifier)) {
+      table_names <- "a"
+    } else {
+      table_names <- c("a", "with spaces", "with,comma")
+    }
+
+    for (table_name in table_names) {
+      test_in <- data.frame(a = 1)
+
+      local_remove_test_table(con, table_name)
+      dbWriteTable(con, dbQuoteIdentifier(con, table_name), test_in)
+      test_out <- check_df(dbReadTable(con, table_name))
+      expect_equal_df(test_out, test_in)
+    }
+  },
+
+  #'
+  #' The `value` argument must be a data frame
+  write_table_value_df = function(con, table_name) {
+    test_in <- trivial_df()
+    dbWriteTable(con, table_name, test_in)
+
+    test_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(test_out, test_in)
+  },
+
+  #' with a subset of the columns of the existing table if `append = TRUE`.
+  write_table_value_subset = function(ctx, con, table_name) {
+    test_in <- trivial_df(3, letters[1:3])
+    dbCreateTable(con, table_name, test_in)
+    dbWriteTable(con, table_name, test_in[2], append = TRUE)
+
+    test_out <- check_df(dbReadTable(con, table_name))
+
+    test_in[c(1, 3)] <- NA_real_
+    expect_equal_df(test_out, test_in)
+  },
+
+  #' The order of the columns does not matter with `append = TRUE`.
+  write_table_value_shuffle = function(ctx, con, table_name) {
+    test_in <- trivial_df(3, letters[1:3])
+    dbCreateTable(con, table_name, test_in)
+    dbWriteTable(con, table_name, test_in[c(2, 3, 1)], append = TRUE)
+
+    test_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(test_out, test_in)
+  },
+
+  #
+  write_table_value_shuffle_subset = function(ctx, con, table_name) {
+    test_in <- trivial_df(4, letters[1:4])
+    dbCreateTable(con, table_name, test_in)
+    dbWriteTable(con, table_name, test_in[c(4, 1, 3)], append = TRUE)
+
+    test_out <- check_df(dbReadTable(con, table_name))
+
+    test_in[2] <- NA_real_
+    expect_equal_df(test_out, test_in)
   },
 
   #'
   #' If the `overwrite` argument is `TRUE`, an existing table of the same name
   #' will be overwritten.
   overwrite_table = function(ctx, con, table_name) {
-    iris <- get_iris(ctx)
-    dbWriteTable(con, table_name, iris)
+    penguins <- get_penguins(ctx)
+    dbWriteTable(con, table_name, penguins)
     expect_error(
-      dbWriteTable(con, table_name, iris[1:10, ], overwrite = TRUE),
+      dbWriteTable(con, table_name, penguins[1, ], overwrite = TRUE),
       NA
     )
-    iris_out <- check_df(dbReadTable(con, table_name))
-    expect_equal_df(iris_out, iris[1:10, ])
+    penguins_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(penguins_out, penguins[1, ])
   },
 
   #' This argument doesn't change behavior if the table does not exist yet.
   overwrite_table_missing = function(ctx, con, table_name) {
-    iris_in <- get_iris(ctx)
+    penguins_in <- get_penguins(ctx)
     expect_error(
-      dbWriteTable(con, table_name, iris_in[1:10, ], overwrite = TRUE),
+      dbWriteTable(con, table_name, penguins_in[1, ], overwrite = TRUE),
       NA
     )
-    iris_out <- check_df(dbReadTable(con, table_name))
-    expect_equal_df(iris_out, iris_in[1:10, ])
+    penguins_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(penguins_out, penguins_in[1, ])
   },
 
   #'
   #' If the `append` argument is `TRUE`, the rows in an existing table are
   #' preserved, and the new data are appended.
   append_table = function(ctx, con, table_name) {
-    iris <- get_iris(ctx)
-    dbWriteTable(con, table_name, iris)
-    expect_error(dbWriteTable(con, table_name, iris[1:10, ], append = TRUE), NA)
-    iris_out <- check_df(dbReadTable(con, table_name))
-    expect_equal_df(iris_out, rbind(iris, iris[1:10, ]))
+    penguins <- get_penguins(ctx)
+    dbWriteTable(con, table_name, penguins)
+    expect_error(dbWriteTable(con, table_name, penguins[1, ], append = TRUE), NA)
+    penguins_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(penguins_out, rbind(penguins, penguins[1, ]))
   },
 
   #' If the table doesn't exist yet, it is created.
   append_table_new = function(ctx, con, table_name) {
-    iris <- get_iris(ctx)
-    expect_error(dbWriteTable(con, table_name, iris[1:10, ], append = TRUE), NA)
-    iris_out <- check_df(dbReadTable(con, table_name))
-    expect_equal_df(iris_out, iris[1:10, ])
+    penguins <- get_penguins(ctx)
+    expect_error(dbWriteTable(con, table_name, penguins[1, ], append = TRUE), NA)
+    penguins_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(penguins_out, penguins[1, ])
   },
 
   #'
@@ -186,10 +247,10 @@ spec_sql_write_table <- list(
       skip("tweak: temporary_tables")
     }
 
-    iris <- get_iris(ctx)[1:30, ]
-    dbWriteTable(con, table_name, iris, temporary = TRUE)
-    iris_out <- check_df(dbReadTable(con, table_name))
-    expect_equal_df(iris_out, iris)
+    penguins <- get_penguins(ctx)
+    dbWriteTable(con, table_name, penguins, temporary = TRUE)
+    penguins_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(penguins_out, penguins)
 
     con2 <- local_connection(ctx)
     expect_error(dbReadTable(con2, table_name))
@@ -204,72 +265,105 @@ spec_sql_write_table <- list(
     expect_error(dbReadTable(con, table_name))
   },
 
-  #' A regular, non-temporary table is visible in a second connection
-  table_visible_in_other_connection = function(ctx, con) {
-    iris30 <- get_iris(ctx)[1:30, ]
+  #' A regular, non-temporary table is visible in a second connection,
+  table_visible_in_other_connection = function(ctx, local_con) {
+    penguins30 <- get_penguins(ctx)
 
     table_name <- "dbit09"
 
-    dbWriteTable(con, table_name, iris30)
-    iris_out <- check_df(dbReadTable(con, table_name))
-    expect_equal_df(iris_out, iris30)
+    dbWriteTable(local_con, table_name, penguins30)
+    penguins_out <- check_df(dbReadTable(local_con, table_name))
+    expect_equal_df(penguins_out, penguins30)
 
     con2 <- local_connection(ctx)
-    expect_equal_df(dbReadTable(con2, table_name), iris30)
+    expect_equal_df(dbReadTable(con2, table_name), penguins30)
   },
   # second stage
-  table_visible_in_other_connection = function(ctx, con, table_name = "dbit09") {
-    #' and after reconnecting to the database.
-    iris30 <- get_iris(ctx)[1:30, ]
+  table_visible_in_other_connection = function(ctx, con) {
+    #' in a pre-existing connection,
+    penguins30 <- get_penguins(ctx)
 
-    expect_equal_df(check_df(dbReadTable(con, table_name)), iris30)
+    table_name <- "dbit09"
+
+    expect_equal_df(check_df(dbReadTable(con, table_name)), penguins30)
+  },
+  # third stage
+  table_visible_in_other_connection = function(ctx, local_con, table_name = "dbit09") {
+    #' and after reconnecting to the database.
+    penguins30 <- get_penguins(ctx)
+
+    expect_equal_df(check_df(dbReadTable(local_con, table_name)), penguins30)
   },
 
   #'
   #' SQL keywords can be used freely in table names, column names, and data.
   roundtrip_keywords = function(ctx, con) {
     tbl_in <- data.frame(
-      SELECT = "UNIQUE", FROM = "JOIN", WHERE = "ORDER",
+      select = "unique", from = "join", where = "order",
       stringsAsFactors = FALSE
     )
-    test_table_roundtrip(con, tbl_in, name = "EXISTS")
+    test_table_roundtrip(con, tbl_in, name = "exists")
   },
 
-  #' Quotes, commas, and spaces can also be used in the data,
+  #' Quotes, commas, spaces, and other special characters such as newlines and tabs,
+  #' can also be used in the data,
+  roundtrip_quotes = function(ctx, con, table_name) {
+    tbl_in <- data.frame(
+      as.character(dbQuoteString(con, "")),
+      as.character(dbQuoteIdentifier(con, "")),
+      "with space",
+      "a,b", "a\nb", "a\tb", "a\rb", "a\bb",
+      "a\\Nb", "a\\tb", "a\\rb", "a\\bb", "a\\Zb",
+      stringsAsFactors = FALSE
+    )
+
+    names(tbl_in) <- letters[seq_along(tbl_in)]
+    test_table_roundtrip(con, tbl_in)
+  },
+
   #' and, if the database supports non-syntactic identifiers,
-  #' also for table names and column names.
-  roundtrip_quotes = function(ctx, con) {
-    if (!isTRUE(ctx$tweaks$strict_identifier)) {
-      table_names <- c(
-        as.character(dbQuoteIdentifier(con, "")),
-        as.character(dbQuoteString(con, "")),
-        "with space",
-        ","
-      )
-    } else {
-      table_names <- "a"
+  #' also for table names
+  roundtrip_quotes_table_names = function(ctx, con) {
+    if (isTRUE(ctx$tweaks$strict_identifier)) {
+      skip("tweak: strict_identifier")
     }
+
+    table_names <- c(
+      as.character(dbQuoteIdentifier(con, "")),
+      as.character(dbQuoteString(con, "")),
+      "with space",
+      "a,b", "a\nb", "a\tb", "a\rb", "a\bb",
+      "a\\Nb", "a\\tb", "a\\rb", "a\\bb", "a\\Zb"
+    )
+
+    tbl_in <- trivial_df()
 
     for (table_name in table_names) {
-      tbl_in <- data.frame(
-        a = as.character(dbQuoteString(con, "")),
-        b = as.character(dbQuoteIdentifier(con, "")),
-        c = "with space",
-        d = ",",
-        stringsAsFactors = FALSE
-      )
-
-      if (!isTRUE(ctx$tweaks$strict_identifier)) {
-        names(tbl_in) <- c(
-          as.character(dbQuoteIdentifier(con, "")),
-          as.character(dbQuoteString(con, "")),
-          "with space",
-          ","
-        )
-      }
-
-      test_table_roundtrip(con, tbl_in)
+      test_table_roundtrip_one(con, tbl_in, .add_na = "none")
     }
+  },
+
+  #' and column names.
+  roundtrip_quotes_column_names = function(ctx, con) {
+    if (as.package_version(ctx$tweaks$dbitest_version) < "1.7.2") {
+      skip(paste0("tweak: dbitest_version: ", ctx$tweaks$dbitest_version))
+    }
+
+    if (isTRUE(ctx$tweaks$strict_identifier)) {
+      skip("tweak: strict_identifier")
+    }
+
+    column_names <- c(
+      as.character(dbQuoteIdentifier(con, "")),
+      as.character(dbQuoteString(con, "")),
+      "with space",
+      "a,b", "a\nb", "a\tb", "a\rb", "a\bb",
+      "a\\nb", "a\\tb", "a\\rb", "a\\bb", "a\\zb"
+    )
+
+    tbl_in <- trivial_df(length(column_names), column_names)
+
+    test_table_roundtrip_one(con, tbl_in, .add_na = "none")
   },
 
   #'
@@ -436,12 +530,39 @@ spec_sql_write_table <- list(
       skip("tweak: !date_typed")
     }
 
-    #'   returned as `Date`)
+    #'   returned as `Date`),
     tbl_in <- data.frame(a = as_numeric_date(c(Sys.Date() + 1:5)))
     test_table_roundtrip(
       con, tbl_in,
       transform = function(tbl_out) {
-        expect_is(unclass(tbl_out$a), "numeric")
+        expect_type(unclass(tbl_out$a), "double")
+        tbl_out
+      }
+    )
+  },
+
+  #'   also for dates prior to 1970 or 1900 or after 2038
+  roundtrip_date_extended = function(ctx, con) {
+    if (!isTRUE(ctx$tweaks$date_typed)) {
+      skip("tweak: !date_typed")
+    }
+
+    tbl_in <- data.frame(a = as_numeric_date(c(
+      "1811-11-11",
+      "1899-12-31",
+      "1900-01-01",
+      "1950-05-05",
+      "1969-12-31",
+      "1970-01-01",
+      "2037-01-01",
+      "2038-01-01",
+      "2040-01-01",
+      "2999-09-09"
+    )))
+    test_table_roundtrip(
+      con, tbl_in,
+      transform = function(tbl_out) {
+        expect_type(unclass(tbl_out$a), "double")
         tbl_out
       }
     )
@@ -491,9 +612,49 @@ spec_sql_write_table <- list(
     attr(local, "tzone") <- ""
     tbl_in <- data.frame(id = seq_along(local))
     tbl_in$local <- local
-    tbl_in$GMT <- lubridate::with_tz(local, tzone = "GMT")
-    tbl_in$PST8PDT <- lubridate::with_tz(local, tzone = "PST8PDT")
-    tbl_in$UTC <- lubridate::with_tz(local, tzone = "UTC")
+    tbl_in$gmt <- lubridate::with_tz(local, tzone = "GMT")
+    tbl_in$pst8pdt <- lubridate::with_tz(local, tzone = "PST8PDT")
+    tbl_in$utc <- lubridate::with_tz(local, tzone = "UTC")
+
+    #'   respecting the time zone but not necessarily preserving the
+    #'   input time zone),
+    test_table_roundtrip(
+      con, tbl_in,
+      transform = function(out) {
+        dates <- vapply(out, inherits, "POSIXt", FUN.VALUE = logical(1L))
+        tz <- toupper(names(out))
+        tz[tz == "LOCAL"] <- ""
+        out[dates] <- Map(lubridate::with_tz, out[dates], tz[dates])
+        out
+      }
+    )
+  },
+
+  #'   also for timestamps prior to 1970 or 1900 or after 2038
+  roundtrip_timestamp_extended = function(ctx, con) {
+    if (!isTRUE(ctx$tweaks$timestamp_typed)) {
+      skip("tweak: !timestamp_typed")
+    }
+
+    local <- as.POSIXct(c(
+      "1811-11-11",
+      "1899-12-31",
+      "1900-01-01",
+      "1950-05-05",
+      "1969-12-31",
+      "1970-01-01",
+      "2037-01-01",
+      "2038-01-01",
+      "2040-01-01",
+      "2999-09-09"
+    ))
+
+    attr(local, "tzone") <- ""
+    tbl_in <- data.frame(id = seq_along(local))
+    tbl_in$local <- local
+    tbl_in$gmt <- lubridate::with_tz(local, tzone = "GMT")
+    tbl_in$pst8pdt <- lubridate::with_tz(local, tzone = "PST8PDT")
+    tbl_in$utc <- lubridate::with_tz(local, tzone = "UTC")
 
     #'   respecting the time zone but not necessarily preserving the
     #'   input time zone)
@@ -501,8 +662,8 @@ spec_sql_write_table <- list(
       con, tbl_in,
       transform = function(out) {
         dates <- vapply(out, inherits, "POSIXt", FUN.VALUE = logical(1L))
-        tz <- names(out)
-        tz[tz == "local"] <- ""
+        tz <- toupper(names(out))
+        tz[tz == "LOCAL"] <- ""
         out[dates] <- Map(lubridate::with_tz, out[dates], tz[dates])
         out
       }
@@ -552,16 +713,15 @@ spec_sql_write_table <- list(
   #' see [sqlRownamesToColumn()] for details:
   write_table_row_names_false = function(ctx, con) {
     #' - If `FALSE` or `NULL`, row names are ignored.
-    table_name <- random_table_name()
     for (row.names in list(FALSE, NULL)) {
-      with_remove_test_table(name = table_name, {
-        mtcars_in <- datasets::mtcars
-        dbWriteTable(con, table_name, mtcars_in, row.names = row.names)
-        mtcars_out <- check_df(dbReadTable(con, table_name, row.names = FALSE))
+      table_name <- random_table_name()
+      local_remove_test_table(con, table_name)
+      mtcars_in <- datasets::mtcars
+      dbWriteTable(con, table_name, mtcars_in, row.names = row.names)
+      mtcars_out <- check_df(dbReadTable(con, table_name, row.names = FALSE))
 
-        expect_false("row_names" %in% names(mtcars_out))
-        expect_equal_df(mtcars_out, unrowname(mtcars_in))
-      })
+      expect_false("row_names" %in% names(mtcars_out))
+      expect_equal_df(mtcars_out, unrowname(mtcars_in))
     }
   },
   #
@@ -583,14 +743,14 @@ spec_sql_write_table <- list(
     #'   even if the input data frame only has natural row names from 1 to `nrow(...)`.
     row.names <- TRUE
 
-    iris_in <- get_iris(ctx)
-    dbWriteTable(con, table_name, iris_in, row.names = row.names)
-    iris_out <- check_df(dbReadTable(con, table_name, row.names = FALSE))
+    penguins_in <- get_penguins(ctx)
+    dbWriteTable(con, table_name, penguins_in, row.names = row.names)
+    penguins_out <- check_df(dbReadTable(con, table_name, row.names = FALSE))
 
-    expect_true("row_names" %in% names(iris_out))
-    expect_true(all(rownames(iris_in) %in% iris_out$row_names))
-    expect_true(all(iris_out$row_names %in% rownames(iris_in)))
-    expect_equal_df(iris_out[names(iris_out) != "row_names"], iris_in)
+    expect_true("row_names" %in% names(penguins_out))
+    expect_true(all(rownames(penguins_in) %in% penguins_out$row_names))
+    expect_true(all(penguins_out$row_names %in% rownames(penguins_in)))
+    expect_equal_df(penguins_out[names(penguins_out) != "row_names"], penguins_in)
   },
   #
   write_table_row_names_na_exists = function(ctx, con, table_name) {
@@ -611,11 +771,11 @@ spec_sql_write_table <- list(
     #'   no extra column is created in the case of natural row names.
     row.names <- NA
 
-    iris_in <- get_iris(ctx)
-    dbWriteTable(con, table_name, iris_in, row.names = row.names)
-    iris_out <- check_df(dbReadTable(con, table_name, row.names = FALSE))
+    penguins_in <- get_penguins(ctx)
+    dbWriteTable(con, table_name, penguins_in, row.names = row.names)
+    penguins_out <- check_df(dbReadTable(con, table_name, row.names = FALSE))
 
-    expect_equal_df(iris_out, iris_in)
+    expect_equal_df(penguins_out, penguins_in)
   },
   #
   write_table_row_names_string_exists = function(ctx, con, table_name) {
@@ -638,14 +798,14 @@ spec_sql_write_table <- list(
     row.names <- "seq"
     #'   even if the input data frame only has natural row names.
 
-    iris_in <- get_iris(ctx)
-    dbWriteTable(con, table_name, iris_in, row.names = row.names)
-    iris_out <- check_df(dbReadTable(con, table_name, row.names = FALSE))
+    penguins_in <- get_penguins(ctx)
+    dbWriteTable(con, table_name, penguins_in, row.names = row.names)
+    penguins_out <- check_df(dbReadTable(con, table_name, row.names = FALSE))
 
-    expect_true("seq" %in% names(iris_out))
-    expect_true(all(iris_out$seq %in% rownames(iris_in)))
-    expect_true(all(rownames(iris_in) %in% iris_out$seq))
-    expect_equal_df(iris_out[names(iris_out) != "seq"], iris_in)
+    expect_true("seq" %in% names(penguins_out))
+    expect_true(all(penguins_out$seq %in% rownames(penguins_in)))
+    expect_true(all(rownames(penguins_in) %in% penguins_out$seq))
+    expect_equal_df(penguins_out[names(penguins_out) != "seq"], penguins_in)
   },
   #
   write_table_row_names_default = function(ctx, con, table_name) {

@@ -6,6 +6,12 @@
 \title{spec_sql_write_table}
 \value{
 \code{dbWriteTable()} returns \code{TRUE}, invisibly.
+}
+\description{
+spec_sql_write_table
+}
+\section{Failure modes}{
+
 If the table exists, and both \code{append} and \code{overwrite} arguments are unset,
 or \code{append = TRUE} and the data frame with the new data has different
 column names,
@@ -27,9 +33,7 @@ or missing names,
 incompatible columns)
 also raise an error.
 }
-\description{
-spec_sql_write_table
-}
+
 \section{Additional arguments}{
 
 The following arguments are not part of the \code{dbWriteTable()} generic
@@ -57,6 +61,10 @@ perhaps by calling \code{dbQuoteIdentifier(conn, x = name)}
 \item If the result of a call to \code{\link[=dbQuoteIdentifier]{dbQuoteIdentifier()}}: no more quoting is done
 }
 
+The \code{value} argument must be a data frame
+with a subset of the columns of the existing table if \code{append = TRUE}.
+The order of the columns does not matter with \code{append = TRUE}.
+
 If the \code{overwrite} argument is \code{TRUE}, an existing table of the same name
 will be overwritten.
 This argument doesn't change behavior if the table does not exist yet.
@@ -68,13 +76,16 @@ If the table doesn't exist yet, it is created.
 If the \code{temporary} argument is \code{TRUE}, the table is not available in a
 second connection and is gone after reconnecting.
 Not all backends support this argument.
-A regular, non-temporary table is visible in a second connection
+A regular, non-temporary table is visible in a second connection,
+in a pre-existing connection,
 and after reconnecting to the database.
 
 SQL keywords can be used freely in table names, column names, and data.
-Quotes, commas, and spaces can also be used in the data,
+Quotes, commas, spaces, and other special characters such as newlines and tabs,
+can also be used in the data,
 and, if the database supports non-syntactic identifiers,
-also for table names and column names.
+also for table names
+and column names.
 
 The following data types must be supported at least,
 and be read identically with \code{\link[=dbReadTable]{dbReadTable()}}:
@@ -102,13 +113,17 @@ before and after a non-empty string
 (if supported by the database)
 \item date
 (if supported by the database;
-returned as \code{Date})
+returned as \code{Date}),
+also for dates prior to 1970 or 1900 or after 2038
 \item time
 (if supported by the database;
 returned as objects that inherit from \code{difftime})
 \item timestamp
 (if supported by the database;
 returned as \code{POSIXct}
+respecting the time zone but not necessarily preserving the
+input time zone),
+also for timestamps prior to 1970 or 1900 or after 2038
 respecting the time zone but not necessarily preserving the
 input time zone)
 }
@@ -137,4 +152,19 @@ even if the input data frame only has natural row names.
 The default is \code{row.names = FALSE}.
 }
 
-\keyword{internal}
+\seealso{
+Other sql specifications: 
+\code{\link{spec_sql_append_table}},
+\code{\link{spec_sql_create_table}},
+\code{\link{spec_sql_exists_table}},
+\code{\link{spec_sql_list_fields}},
+\code{\link{spec_sql_list_objects}},
+\code{\link{spec_sql_list_tables}},
+\code{\link{spec_sql_quote_identifier}},
+\code{\link{spec_sql_quote_literal}},
+\code{\link{spec_sql_quote_string}},
+\code{\link{spec_sql_read_table}},
+\code{\link{spec_sql_remove_table}},
+\code{\link{spec_sql_unquote_identifier}}
+}
+\concept{sql specifications}

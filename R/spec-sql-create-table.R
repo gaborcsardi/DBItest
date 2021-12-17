@@ -1,7 +1,8 @@
 #' spec_sql_create_table
+#' @family sql specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_sql_create_table <- list(
   create_table_formals = function() {
     # <establish formals of described functions>
@@ -14,6 +15,8 @@ spec_sql_create_table <- list(
     expect_invisible_true(dbCreateTable(con, table_name, trivial_df()))
   },
 
+  #'
+  #' @section Failure modes:
   #' If the table exists, an error is raised; the remote table remains unchanged.
   create_table_overwrite = function(con, table_name) {
     test_in <- trivial_df()
@@ -87,20 +90,34 @@ spec_sql_create_table <- list(
     for (table_name in table_names) {
       test_in <- trivial_df()
 
-      with_remove_test_table(name = dbQuoteIdentifier(con, table_name), {
-        #' - If an unquoted table name as string: `dbCreateTable()` will do the quoting,
-        dbCreateTable(con, table_name, test_in)
-        test_out <- check_df(dbReadTable(con, dbQuoteIdentifier(con, table_name)))
-        expect_equal_df(test_out, test_in[0, , drop = FALSE])
-        #'   perhaps by calling `dbQuoteIdentifier(conn, x = name)`
-      })
+      local_remove_test_table(con, table_name)
+      #' - If an unquoted table name as string: `dbCreateTable()` will do the quoting,
+      dbCreateTable(con, table_name, test_in)
+      test_out <- check_df(dbReadTable(con, dbQuoteIdentifier(con, table_name)))
+      expect_equal_df(test_out, test_in[0, , drop = FALSE])
+      #'   perhaps by calling `dbQuoteIdentifier(conn, x = name)`
+    }
+  },
 
-      with_remove_test_table(name = dbQuoteIdentifier(con, table_name), {
-        #' - If the result of a call to [dbQuoteIdentifier()]: no more quoting is done
-        dbCreateTable(con, dbQuoteIdentifier(con, table_name), test_in)
-        test_out <- check_df(dbReadTable(con, table_name))
-        expect_equal_df(test_out, test_in[0, , drop = FALSE])
-      })
+  #' - If the result of a call to [dbQuoteIdentifier()]: no more quoting is done
+  create_table_name_quoted = function(ctx, con) {
+    if (as.package_version(ctx$tweaks$dbitest_version) < "1.7.2") {
+      skip(paste0("tweak: dbitest_version: ", ctx$tweaks$dbitest_version))
+    }
+
+    if (isTRUE(ctx$tweaks$strict_identifier)) {
+      table_names <- "a"
+    } else {
+      table_names <- c("a", "with spaces", "with,comma")
+    }
+
+    for (table_name in table_names) {
+      test_in <- trivial_df()
+
+      local_remove_test_table(con, table_name)
+      dbCreateTable(con, dbQuoteIdentifier(con, table_name), test_in)
+      test_out <- check_df(dbReadTable(con, table_name))
+      expect_equal_df(test_out, test_in[0, , drop = FALSE])
     }
   },
 
@@ -113,10 +130,10 @@ spec_sql_create_table <- list(
       skip("tweak: temporary_tables")
     }
 
-    iris <- get_iris(ctx)[1:30, ]
-    dbCreateTable(con, table_name, iris, temporary = TRUE)
-    iris_out <- check_df(dbReadTable(con, table_name))
-    expect_equal_df(iris_out, iris[0, , drop = FALSE])
+    penguins <- get_penguins(ctx)
+    dbCreateTable(con, table_name, penguins, temporary = TRUE)
+    penguins_out <- check_df(dbReadTable(con, table_name))
+    expect_equal_df(penguins_out, penguins[0, , drop = FALSE])
 
     con2 <- local_connection(ctx)
     expect_error(dbReadTable(con2, table_name))
@@ -127,32 +144,43 @@ spec_sql_create_table <- list(
     expect_error(dbReadTable(con, table_name))
   },
 
-  #' A regular, non-temporary table is visible in a second connection
-  create_table_visible_in_other_connection = function(ctx, con) {
-    iris <- get_iris(ctx)[1:30, ]
+  #' A regular, non-temporary table is visible in a second connection,
+  create_table_visible_in_other_connection = function(ctx, local_con) {
+    penguins <- get_penguins(ctx)
 
     table_name <- "dbit04"
-    dbCreateTable(con, table_name, iris)
-    iris_out <- check_df(dbReadTable(con, table_name))
-    expect_equal_df(iris_out, iris[0, , drop = FALSE])
+    dbCreateTable(local_con, table_name, penguins)
+    penguins_out <- check_df(dbReadTable(local_con, table_name))
+    expect_equal_df(penguins_out, penguins[0, , drop = FALSE])
 
     con2 <- local_connection(ctx)
-    expect_equal_df(dbReadTable(con2, table_name), iris[0, , drop = FALSE])
+    expect_equal_df(dbReadTable(con2, table_name), penguins[0, , drop = FALSE])
   },
   # second stage
-  create_table_visible_in_other_connection = function(con, table_name = "dbit04") {
+  create_table_visible_in_other_connection = function(ctx, con) {
+    penguins <- get_penguins(ctx)
+
+    table_name <- "dbit04"
+
+    #' in a pre-existing connection,
+    expect_equal_df(check_df(dbReadTable(con, table_name)), penguins[0, , drop = FALSE])
+  },
+  # third stage
+  create_table_visible_in_other_connection = function(ctx, local_con, table_name = "dbit04") {
+    penguins <- get_penguins(ctx)
+
     #' and after reconnecting to the database.
-    expect_equal_df(check_df(dbReadTable(con, table_name)), iris[0, , drop = FALSE])
+    expect_equal_df(check_df(dbReadTable(local_con, table_name)), penguins[0, , drop = FALSE])
   },
 
   #'
   #' SQL keywords can be used freely in table names, column names, and data.
   create_roundtrip_keywords = function(ctx, con) {
     tbl_in <- data.frame(
-      SELECT = "UNIQUE", FROM = "JOIN", WHERE = "ORDER",
+      select = "unique", from = "join", where = "order",
       stringsAsFactors = FALSE
     )
-    test_table_roundtrip(con, tbl_in, name = "EXISTS")
+    test_table_roundtrip(con, tbl_in, name = "exists")
   },
 
   #' Quotes, commas, and spaces can also be used  for table names and column names,

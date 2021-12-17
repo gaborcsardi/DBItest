@@ -1,7 +1,8 @@
 #' spec_sql_list_tables
+#' @family sql specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_sql_list_tables <- list(
   list_tables_formals = function() {
     # <establish formals of described functions>
@@ -13,7 +14,7 @@ spec_sql_list_tables <- list(
   list_tables = function(ctx, con, table_name = "dbit07") {
     tables <- dbListTables(con)
     #' returns a character vector
-    expect_is(tables, "character")
+    expect_type(tables, "character")
     #' that enumerates all tables
     expect_false(table_name %in% tables)
 
@@ -22,8 +23,8 @@ spec_sql_list_tables <- list(
     #' in the database.
 
     #' Tables added with [dbWriteTable()]
-    iris <- get_iris(ctx)
-    dbWriteTable(con, table_name, iris)
+    penguins <- get_penguins(ctx)
+    dbWriteTable(con, table_name, penguins)
 
     #' are part of the list.
     tables <- dbListTables(con)
@@ -57,15 +58,16 @@ spec_sql_list_tables <- list(
     }
 
     for (table_name in table_names) {
-      with_remove_test_table(name = dbQuoteIdentifier(con, table_name), {
-        dbWriteTable(con, dbQuoteIdentifier(con, table_name), data.frame(a = 2L))
-        tables <- dbListTables(con)
-        expect_true(table_name %in% tables)
-        expect_true(dbQuoteIdentifier(con, table_name) %in% dbQuoteIdentifier(con, tables))
-      })
+      local_remove_test_table(con, table_name)
+      dbWriteTable(con, dbQuoteIdentifier(con, table_name), data.frame(a = 2L))
+      tables <- dbListTables(con)
+      expect_true(table_name %in% tables)
+      expect_true(dbQuoteIdentifier(con, table_name) %in% dbQuoteIdentifier(con, tables))
     }
   },
 
+  #'
+  #' @section Failure modes:
   #' An error is raised when calling this method for a closed
   list_tables_closed_connection = function(ctx, closed_con) {
     expect_error(dbListTables(closed_con))

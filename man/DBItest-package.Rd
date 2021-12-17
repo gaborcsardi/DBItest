@@ -4,10 +4,9 @@
 \name{DBItest-package}
 \alias{DBItest}
 \alias{DBItest-package}
-\title{DBItest: Testing 'DBI' 'Backends'}
+\title{DBItest: Testing DBI Backends}
 \description{
-A helper that tests 'DBI' back ends for conformity
-    to the interface.
+A helper that tests DBI back ends for conformity to the interface.
 }
 \details{
 The two most important functions are \code{\link[=make_context]{make_context()}} and

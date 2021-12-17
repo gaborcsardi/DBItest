@@ -1,7 +1,8 @@
 #' spec_meta_get_rows_affected
+#' @family meta specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_meta_get_rows_affected <- list(
   get_rows_affected_formals = function() {
     # <establish formals of described functions>
@@ -18,38 +19,31 @@ spec_meta_get_rows_affected <- list(
       "DELETE FROM ", dbQuoteIdentifier(con, table_name), " ",
       "WHERE a < 6"
     )
-    with_result(
-      #' issued with [dbSendStatement()].
-      dbSendStatement(con, query),
-      {
-        rc <- dbGetRowsAffected(res)
-        #' The value is available directly after the call
-        expect_equal(rc, 5L)
-        expect_warning(check_df(dbFetch(res)))
-        rc <- dbGetRowsAffected(res)
-        #' and does not change after calling [dbFetch()].
-        expect_equal(rc, 5L)
-      }
-    )
+    #' issued with [dbSendStatement()].
+    res <- local_result(dbSendStatement(con, query))
+    rc <- dbGetRowsAffected(res)
+    #' The value is available directly after the call
+    expect_equal(rc, 5L)
+    expect_warning(check_df(dbFetch(res)))
+    rc <- dbGetRowsAffected(res)
+    #' and does not change after calling [dbFetch()].
+    expect_equal(rc, 5L)
   },
   #
   rows_affected_query = function(con) {
     query <- trivial_query()
-    with_result(
-      #' For queries issued with [dbSendQuery()],
-      dbSendQuery(con, query),
-      {
-        rc <- dbGetRowsAffected(res)
-        #' zero is returned before
-        expect_equal(rc, 0L)
-        check_df(dbFetch(res))
-        rc <- dbGetRowsAffected(res)
-        #' and after the call to `dbFetch()`.
-        expect_equal(rc, 0L)
-      }
-    )
+    #' For queries issued with [dbSendQuery()],
+    res <- local_result(dbSendQuery(con, query))
+    rc <- dbGetRowsAffected(res)
+    #' zero is returned before
+    expect_equal(rc, 0L)
+    check_df(dbFetch(res))
+    rc <- dbGetRowsAffected(res)
+    #' and after the call to `dbFetch()`.
+    expect_equal(rc, 0L)
   },
-  #
+  #'
+  #' @section Failure modes:
   get_rows_affected_error = function(con, table_name) {
     query <- paste0(
       "CREATE TABLE ", dbQuoteIdentifier(con, table_name), " (a integer)"

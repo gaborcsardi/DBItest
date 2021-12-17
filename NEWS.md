@@ -1,5 +1,36 @@
 <!-- NEWS.md is maintained by https://cynkra.github.io/fledge, do not edit -->
 
+# DBItest 1.7.2 (2021-12-17)
+
+## Features
+
+- `tweaks()` gains `dbitest_version` argument to support targeting a specific version of the DBItest package. The default is 1.7.1 (#236).
+- Reuse database connection for most tests (#245).
+- New `roundtrip_date_extended`, `roundtrip_timestamp_extended`, `append_roundtrip_date_extended` and `append_roundtrip_timestamp_extended` test dates between 1800 and 2999 (#148, #249).
+- New `quote_literal_empty` test (#248).
+- New `bind_character_escape` test for binding special characters (#242).
+- New `bind_time_minutes_integer` test for integer durations.
+
+## Bug fixes
+
+- All column names are specified using lowercase on input, for compatibility with Redshift (#234).
+- `column_info_consistent` no longer tests mangling of column names (#181).
+- `spec_sql_append_table` test: Remove bad argument.
+
+## Documentation
+
+- Improve documentation: list `spec_` objects in pkgdown help index, add cross references (#128).
+- Add specification for `value` argument to `DBI::dbWriteTable()` (#235).
+
+## Internal
+
+- Replace internal `with_result()`, `with_remove_test_tables()` and `with_rollback_on_error()` for better error traces (#184, #250, #251, #253).
+- Use `palmerpenguins::penguins` instead of `iris` (#241).
+- Fix MySQL ODBC test on GitHub Actions (#237).
+- Improve testthat 3e compatibility: remove `testthat::expect_is()` and `testthat::expect_that()` from tests (#231, @michaelquinn32).
+- Decompose query used for testing `dbBind()`.
+
+
 # DBItest 1.7.1 (2021-07-30)
 
 ## Features
@@ -27,7 +58,7 @@
 - Compatibility with testthat 3.0.0 (#207).
 - Switch to GitHub Actions (#201).
 
-# DBItest 1.7.0
+# DBItest 1.7.0 (2019-12-16)
 
 ## Specifications
 

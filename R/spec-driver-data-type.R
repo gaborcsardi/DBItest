@@ -1,7 +1,8 @@
 #' spec_driver_data_type
+#' @family driver specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 #' @inherit test_data_type
 spec_driver_data_type <- list(
   data_type_formals = function() {
@@ -34,11 +35,13 @@ test_data_type <- function(ctx, dbObj) {
         #' is returned.
         expect_equal(length(dbDataType(dbObj, value)), .(ncol(value)))
       }
-      expect_is(dbDataType(dbObj, .(value)), "character")
+      expect_type(dbDataType(dbObj, .(value)), "character")
       expect_visible(dbDataType(dbObj, .(value)))
     }))
   }
 
+  #'
+  #' @section Failure modes:
   #' An error is raised for invalid values for the `obj` argument such as a
   #' `NULL` value.
   expect_error(dbDataType(dbObj, NULL))

@@ -1,7 +1,8 @@
 #' spec_result_send_statement
+#' @family result specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_result_send_statement <- list(
   send_statement_formals = function() {
     # <establish formals of described functions>
@@ -22,6 +23,8 @@ spec_result_send_statement <- list(
     dbClearResult(res)
   },
 
+  #'
+  #' @section Failure modes:
   #' An error is raised when issuing a statement over a closed
   send_statement_closed_connection = function(ctx, closed_con) {
     table_name <- "dbit10"
@@ -44,6 +47,8 @@ spec_result_send_statement <- list(
   #' An error is also raised if the syntax of the query is invalid
   #' and all query parameters are given (by passing the `params` argument)
   #' or the `immediate` argument is set to `TRUE`.
+  #'
+  #' @section Failure modes:
   send_statement_syntax_error = function(con) {
     expect_error(dbSendStatement(con, "CREATTE", params = list()))
     expect_error(dbSendStatement(con, "CREATTE", immediate = TRUE))
@@ -65,7 +70,10 @@ spec_result_send_statement <- list(
     on.exit(dbDisconnect(con))
     expect_warning(dbSendStatement(con, trivial_query()), NA)
 
-    expect_warning({ dbDisconnect(con); gc() })
+    expect_warning({
+      dbDisconnect(con)
+      gc()
+    })
     on.exit(NULL)
   },
 
@@ -73,17 +81,16 @@ spec_result_send_statement <- list(
   send_statement_only_one_result_set = function(ctx, con, table_name) {
     res1 <- dbSendStatement(con, trivial_statement(ctx, table_name))
     other_table_name <- random_table_name()
-    with_remove_test_table(name = other_table_name, {
-      #' issuing a second query invalidates an already open result set
-      #' and raises a warning.
-      query <- ctx$tweaks$create_table_as(other_table_name, "SELECT 1 AS a")
-      expect_warning(res2 <- dbSendStatement(con, query))
-      expect_false(dbIsValid(res1))
-      #' The newly opened result set is valid
-      expect_true(dbIsValid(res2))
-      #' and must be cleared with `dbClearResult()`.
-      dbClearResult(res2)
-    })
+    local_remove_test_table(con, other_table_name)
+    #' issuing a second query invalidates an already open result set
+    #' and raises a warning.
+    query <- ctx$tweaks$create_table_as(other_table_name, "SELECT 1 AS a")
+    expect_warning(res2 <- dbSendStatement(con, query))
+    expect_false(dbIsValid(res1))
+    #' The newly opened result set is valid
+    expect_true(dbIsValid(res2))
+    #' and must be cleared with `dbClearResult()`.
+    dbClearResult(res2)
   },
 
   #' @section Additional arguments:
@@ -102,18 +109,17 @@ spec_result_send_statement <- list(
   send_statement_params = function(ctx, con) {
     placeholder_funs <- get_placeholder_funs(ctx)
 
-    table_name <- random_table_name()
     for (placeholder_fun in placeholder_funs) {
-      with_remove_test_table(name = table_name, {
-        dbWriteTable(con, table_name, data.frame(a = as.numeric(1:3)))
-        placeholder <- placeholder_fun(1)
-        query <- paste0("DELETE FROM ", table_name, " WHERE a > ", placeholder)
-        values <- 1.5
-        params <- stats::setNames(list(values), names(placeholder))
-        rs <- dbSendStatement(con, query, params = params)
-        expect_equal(dbGetRowsAffected(rs), 2, info = placeholder)
-        dbClearResult(rs)
-      })
+      table_name <- random_table_name()
+      local_remove_test_table(con, table_name)
+      dbWriteTable(con, table_name, data.frame(a = as.numeric(1:3)))
+      placeholder <- placeholder_fun(1)
+      query <- paste0("DELETE FROM ", table_name, " WHERE a > ", placeholder)
+      values <- 1.5
+      params <- stats::setNames(list(values), names(placeholder))
+      rs <- dbSendStatement(con, query, params = params)
+      expect_equal(dbGetRowsAffected(rs), 2, info = placeholder)
+      dbClearResult(rs)
     }
   },
 

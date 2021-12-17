@@ -1,7 +1,8 @@
 #' spec_transaction_begin_commit_rollback
+#' @family transaction specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_transaction_begin_commit_rollback <- list(
   begin_formals = function() {
     # <establish formals of described functions>
@@ -22,9 +23,11 @@ spec_transaction_begin_commit_rollback <- list(
   #' `dbBegin()`, `dbCommit()` and `dbRollback()` return `TRUE`, invisibly.
   begin_commit_return_value = function(con) {
     expect_invisible_true(dbBegin(con))
-    with_rollback_on_error({
-      expect_invisible_true(dbCommit(con))
+    on.exit({
+      dbRollback(con)
     })
+    expect_invisible_true(dbCommit(con))
+    on.exit(NULL)
   },
   #
   begin_rollback_return_value = function(con) {
@@ -32,6 +35,8 @@ spec_transaction_begin_commit_rollback <- list(
     expect_invisible_true(dbRollback(con))
   },
 
+  #'
+  #' @section Failure modes:
   #' The implementations are expected to raise an error in case of failure,
   #' but this is not tested.
   begin_commit_closed = function(ctx, closed_con) {
@@ -63,11 +68,13 @@ spec_transaction_begin_commit_rollback <- list(
     #' Nested transactions are not supported by DBI,
     #' an attempt to call `dbBegin()` twice
     dbBegin(con)
-    with_rollback_on_error({
-      #' yields an error.
-      expect_error(dbBegin(con))
-      dbCommit(con)
+    on.exit({
+      dbRollback(con)
     })
+    #' yields an error.
+    expect_error(dbBegin(con))
+    dbCommit(con)
+    on.exit(NULL)
   },
 
   #' @section Specification:
@@ -95,16 +102,19 @@ spec_transaction_begin_commit_rollback <- list(
     dbWriteTable(con, table_name, data.frame(a = 0L), overwrite = TRUE)
 
     dbBegin(con)
-    with_rollback_on_error({
-      #' but is created during the transaction
-      dbExecute(con, paste0("INSERT INTO ", table_name, " (a) VALUES (1)"))
-
-      #' must exist
-      expect_equal(check_df(dbReadTable(con, table_name)), data.frame(a = 0:1))
-
-      #' both during
-      dbCommit(con)
+    on.exit({
+      dbRollback(con)
     })
+
+    #' but is created during the transaction
+    dbExecute(con, paste0("INSERT INTO ", table_name, " (a) VALUES (1)"))
+
+    #' must exist
+    expect_equal(check_df(dbReadTable(con, table_name)), data.frame(a = 0:1))
+
+    #' both during
+    dbCommit(con)
+    on.exit(NULL)
 
     #' and after the transaction,
     expect_equal(check_df(dbReadTable(con, table_name)), data.frame(a = 0:1))
@@ -140,22 +150,22 @@ spec_transaction_begin_commit_rollback <- list(
     expect_equal(check_df(dbReadTable(con, table_name)), data.frame(a = 0L))
   },
   #
-  begin_write_disconnect = function(con) {
+  begin_write_disconnect = function(local_con) {
     table_name <- "dbit01"
     #'
     #' Disconnection from a connection with an open transaction
-    dbWriteTable(con, table_name, data.frame(a = 0L), overwrite = TRUE)
+    dbWriteTable(local_con, table_name, data.frame(a = 0L), overwrite = TRUE)
 
-    dbBegin(con)
+    dbBegin(local_con)
 
-    dbWriteTable(con, table_name, data.frame(a = 1L), append = TRUE)
+    dbWriteTable(local_con, table_name, data.frame(a = 1L), append = TRUE)
   },
   #
-  begin_write_disconnect = function(con, table_name = "dbit01") {
+  begin_write_disconnect = function(local_con, table_name = "dbit01") {
     #' effectively rolls back the transaction.
     #' All data written in such a transaction must be removed after the
     #' transaction is rolled back.
-    expect_equal(check_df(dbReadTable(con, table_name)), data.frame(a = 0L))
+    expect_equal(check_df(dbReadTable(local_con, table_name)), data.frame(a = 0L))
   },
 
   #'

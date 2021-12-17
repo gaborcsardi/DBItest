@@ -2,7 +2,7 @@
 
 get_pkg_path <- function(ctx) {
   pkg_name <- package_name(ctx)
-  expect_is(pkg_name, "character")
+  expect_type(pkg_name, "character")
 
   pkg_path <- find.package(pkg_name)
   pkg_path
@@ -28,100 +28,35 @@ local_invalid_connection <- function(ctx, ...) {
   unserialize(serialize(con, NULL))
 }
 
-local_remove_test_table <- function(con, name, ..., .local_envir = parent.frame()) {
-  withr::defer(try_silent(dbRemoveTable(con, name)), envir = .local_envir)
+# Calls `dbClearResult()` on `query` after exiting `frame`.
+local_result <- function(query, frame = rlang::caller_env()) {
+  res <- query
+  withr::defer(
+    {
+      dbClearResult(res)
+    },
+    envir = frame
+  )
+  res
 }
 
-with_remove_test_table <- function(code, name = "test", con = "con", env = parent.frame()) {
-  code_sub <- substitute(code)
-
-  con <- as.name(con)
-
-  eval(
-    bquote({
-      on.exit(
-        try_silent(
-          dbRemoveTable(.(con), .(name))
-        ),
-        add = TRUE
-      )
-      local(.(code_sub))
-    }),
-    envir = env
+# Calls `try_silent(dbRemoveTable())` after exiting `frame`.
+local_remove_test_table <- function(con, name, frame = rlang::caller_env()) {
+  table_name <- dbQuoteIdentifier(con, name)
+  withr::defer(
+    try_silent(
+      dbRemoveTable(con, table_name)
+    ),
+    envir = frame
   )
 }
 
-# Evaluates the code inside local() after defining a variable "res"
-# (can be overridden by specifying con argument)
-# that points to a result set created by query. Clears on exit.
-with_result <- function(query, code, res = "res", env = parent.frame()) {
-  code_sub <- substitute(code)
-  query_sub <- substitute(query)
-
-  res <- as.name(res)
-
-  eval(
-    bquote({
-      .(res) <- .(query_sub)
-      on.exit(dbClearResult(.(res)), add = TRUE)
-      local(.(code_sub))
-    }),
-    envir = env
-  )
-}
-
-# Evaluates the code inside local() after defining a variable "con"
-# (can be overridden by specifying con argument)
-# that points to a connection. Removes the table specified by name on exit,
-# if it exists.
-with_remove_test_table <- function(code, name = "test", con = "con", env = parent.frame()) {
-  code_sub <- substitute(code)
-
-  con <- as.name(con)
-
-  eval(
-    bquote({
-      on.exit(
-        try_silent(
-          dbRemoveTable(.(con), .(name))
-        ),
-        add = TRUE
-      )
-      local(.(code_sub))
-    }),
-    envir = env
-  )
-}
-
-# Evaluates the code inside local() after defining a variable "con"
-# (can be overridden by specifying con argument)
-# that points to a result set created by query. Clears on exit.
-with_rollback_on_error <- function(code, con = "con", env = parent.frame()) {
-  code_sub <- substitute(code)
-
-  con <- as.name(con)
-
-  eval(
-    bquote({
-      on.exit(
-        try_silent(
-          dbRollback(.(con))
-        ),
-        add = TRUE
-      )
-      local(.(code_sub))
-      on.exit(NULL, add = FALSE)
-    }),
-    envir = env
-  )
-}
-
-get_iris <- function(ctx) {
-  datasets_iris <- datasets::iris
-  if (isTRUE(ctx$tweaks$strict_identifier)) {
-    names(datasets_iris) <- gsub(".", "_", names(datasets_iris), fixed = TRUE)
+get_penguins <- function(ctx) {
+  datasets_penguins <- unrowname(palmerpenguins::penguins[c(1, 153, 277), ])
+  if (!isTRUE(ctx$tweaks$strict_identifier)) {
+    names(datasets_penguins) <- gsub("_", ".", names(datasets_penguins), fixed = TRUE)
   }
-  datasets_iris
+  as.data.frame(datasets_penguins)
 }
 
 unrowname <- function(x) {

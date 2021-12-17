@@ -1,7 +1,8 @@
 #' spec_result_execute
+#' @family result specifications
 #' @usage NULL
 #' @format NULL
-#' @keywords internal
+#' @keywords NULL
 spec_result_execute <- list(
   execute_formals = function() {
     # <establish formals of described functions>
@@ -22,6 +23,8 @@ spec_result_execute <- list(
     #' by the statement.
   },
 
+  #'
+  #' @section Failure modes:
   #' An error is raised when issuing a statement over a closed
   execute_closed_connection = function(ctx, closed_con) {
     table_name <- "dbit12"
@@ -62,17 +65,16 @@ spec_result_execute <- list(
   execute_params = function(ctx, con) {
     placeholder_funs <- get_placeholder_funs(ctx)
 
-    table_name <- random_table_name()
     for (placeholder_fun in placeholder_funs) {
-      with_remove_test_table(name = table_name, {
-        dbWriteTable(con, table_name, data.frame(a = as.numeric(1:3)))
-        placeholder <- placeholder_fun(1)
-        query <- paste0("DELETE FROM ", table_name, " WHERE a > ", placeholder)
-        values <- 1.5
-        params <- stats::setNames(list(values), names(placeholder))
-        ret <- dbExecute(con, query, params = params)
-        expect_equal(ret, 2, info = placeholder)
-      })
+      table_name <- random_table_name()
+      local_remove_test_table(con, table_name)
+      dbWriteTable(con, table_name, data.frame(a = as.numeric(1:3)))
+      placeholder <- placeholder_fun(1)
+      query <- paste0("DELETE FROM ", table_name, " WHERE a > ", placeholder)
+      values <- 1.5
+      params <- stats::setNames(list(values), names(placeholder))
+      ret <- dbExecute(con, query, params = params)
+      expect_equal(ret, 2, info = placeholder)
     }
   },
 
