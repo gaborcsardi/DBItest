@@ -6,8 +6,10 @@
 #' @keywords NULL
 #' @section DBI classes and methods:
 spec_compliance_methods <- list(
-  #' A backend defines three classes,
   compliance = function(ctx) {
+    #' A backend defines three classes,
+    key_methods <- get_key_methods()
+
     #' which are subclasses of
     expect_identical(
       names(key_methods),
@@ -46,28 +48,14 @@ spec_compliance_methods <- list(
     #
   },
 
-  #' All methods defined in \pkg{DBI} are reexported (so that the package can
-  #' be used without having to attach \pkg{DBI}),
   reexport = function(ctx) {
+    #' All methods defined in \pkg{DBI} are reexported (so that the package can
+    #' be used without having to attach \pkg{DBI}),
     pkg <- package_name(ctx)
 
     where <- asNamespace(pkg)
-    dbi <- asNamespace("DBI")
 
-    dbi_generics <- grep("^[.]__T__db", getNamespaceExports(dbi), value = TRUE)
-    . <- gsub("^[.]__T__(.*):DBI$", "\\1", dbi_generics)
-    . <- setdiff(., c(
-      "dbDriver",
-      "dbUnloadDriver",
-      "dbListConnections",
-      "dbListResults",
-      "dbSetDataMappings",
-      "dbGetException",
-      "dbCallProc",
-      "dbGetConnectArgs"
-    ))
-    . <- c(., "Id")
-    dbi_names <- .
+    dbi_names <- dbi_generics(ctx$tweaks$dbitest_version)
 
     # Suppressing warning "... may not be available when loading"
     exported_names <- suppressWarnings(callr::r(
@@ -89,8 +77,8 @@ spec_compliance_methods <- list(
     expect_equal(paste(missing, collapse = ", "), "")
   },
 
-  #' and have an ellipsis `...` in their formals for extensibility.
   ellipsis = function(ctx) {
+    #' and have an ellipsis `...` in their formals for extensibility.
     pkg <- package_name(ctx)
 
     where <- asNamespace(pkg)
@@ -122,37 +110,39 @@ expect_ellipsis_in_formals <- function(method, name) {
   }))
 }
 
-key_methods <- list(
-  Driver = list(
-    "dbConnect" = NULL,
-    "dbDataType" = NULL
-  ),
-  Connection = list(
-    "dbDisconnect" = NULL,
-    "dbGetInfo" = NULL,
-    "dbSendQuery" = "character",
-    "dbListFields" = "character",
-    "dbListTables" = NULL,
-    "dbReadTable" = "character",
-    "dbWriteTable" = c("character", "data.frame"),
-    "dbExistsTable" = "character",
-    "dbRemoveTable" = "character",
-    "dbBegin" = NULL,
-    "dbCommit" = NULL,
-    "dbRollback" = NULL,
-    "dbIsValid" = NULL,
-    "dbQuoteString" = "character",
-    "dbQuoteIdentifier" = "character"
-  ),
-  Result = list(
-    "dbIsValid" = NULL,
-    "dbFetch" = NULL,
-    "dbClearResult" = NULL,
-    "dbColumnInfo" = NULL,
-    "dbGetRowsAffected" = NULL,
-    "dbGetRowCount" = NULL,
-    "dbHasCompleted" = NULL,
-    "dbGetStatement" = NULL,
-    "dbBind" = NULL
+get_key_methods <- function() {
+  list(
+    Driver = list(
+      "dbConnect" = NULL,
+      "dbDataType" = NULL
+    ),
+    Connection = list(
+      "dbDisconnect" = NULL,
+      "dbGetInfo" = NULL,
+      "dbSendQuery" = "character",
+      "dbListFields" = "character",
+      "dbListTables" = NULL,
+      "dbReadTable" = "character",
+      "dbWriteTable" = c("character", "data.frame"),
+      "dbExistsTable" = "character",
+      "dbRemoveTable" = "character",
+      "dbBegin" = NULL,
+      "dbCommit" = NULL,
+      "dbRollback" = NULL,
+      "dbIsValid" = NULL,
+      "dbQuoteString" = "character",
+      "dbQuoteIdentifier" = "character"
+    ),
+    Result = list(
+      "dbIsValid" = NULL,
+      "dbFetch" = NULL,
+      "dbClearResult" = NULL,
+      "dbColumnInfo" = NULL,
+      "dbGetRowsAffected" = NULL,
+      "dbGetRowCount" = NULL,
+      "dbHasCompleted" = NULL,
+      "dbGetStatement" = NULL,
+      "dbBind" = NULL
+    )
   )
-)
+}

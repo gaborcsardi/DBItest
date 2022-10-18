@@ -4,22 +4,22 @@
 #' @format NULL
 #' @keywords NULL
 spec_result_roundtrip <- list(
-  #' @section Specification:
-  #' The column types of the returned data frame depend on the data returned:
-  #' - [integer] (or coercible to an integer) for integer values between -2^31 and 2^31 - 1,
   data_integer = function(ctx, con) {
+    #' @section Specification:
+    #' The column types of the returned data frame depend on the data returned:
+    #' - [integer] (or coercible to an integer) for integer values between -2^31 and 2^31 - 1,
     #' with [NA] for SQL `NULL` values
     test_select_with_null(.ctx = ctx, con, 1L ~ equals_one, -100L ~ equals_minus_100)
   },
 
-  #' - [numeric] for numbers with a fractional component,
   data_numeric = function(ctx, con) {
+    #' - [numeric] for numbers with a fractional component,
     #' with NA for SQL `NULL` values
     test_select_with_null(.ctx = ctx, con, 1.5, -100.5)
   },
 
-  #' - [logical] for Boolean values (some backends may return an integer);
   data_logical = function(ctx, con) {
+    #' - [logical] for Boolean values (some backends may return an integer);
     int_values <- 1:0
     values <- ctx$tweaks$logical_return(as.logical(int_values))
 
@@ -29,9 +29,9 @@ spec_result_roundtrip <- list(
     test_select_with_null(.ctx = ctx, con, .dots = setNames(values, sql_names))
   },
 
-  #' - [character] for text,
   data_character = function(ctx, con) {
-    values <- texts
+    #' - [character] for text,
+    values <- get_texts()
     test_funs <- rep(list(has_utf8_or_ascii_encoding), length(values))
     sql_names <- as.character(dbQuoteString(con, values))
 
@@ -40,21 +40,31 @@ spec_result_roundtrip <- list(
     test_select_with_null(.ctx = ctx, con, .dots = setNames(test_funs, sql_names))
   },
 
-  #' - lists of [raw] for blobs
   data_raw = function(ctx, con) {
+    #' - lists of [raw] for blobs
     if (isTRUE(ctx$tweaks$omit_blob_tests)) {
       skip("tweak: omit_blob_tests")
     }
 
+    is_raw_list <- function(x) {
+      is.list(x) && is.raw(x[[1L]])
+    }
+
     values <- list(is_raw_list)
-    sql_names <- ctx$tweaks$blob_cast(quote_literal(con, list(raw(1))))
+    sql_names <- ctx$tweaks$blob_cast(DBI::dbQuoteLiteral(con, list(raw(1))))
 
     #' with [NULL] entries for SQL NULL values
     test_select_with_null(.ctx = ctx, con, .dots = setNames(values, sql_names))
   },
 
-  #' - coercible using [as.Date()] for dates,
   data_date = function(ctx, con) {
+    #' - coercible using [as.Date()] for dates,
+    as_date_equals_to <- function(x) {
+      lapply(x, function(xx) {
+        function(value) as.Date(value) == xx
+      })
+    }
+
     char_values <- paste0("2015-01-", sprintf("%.2d", 1:12))
     values <- as_date_equals_to(as.Date(char_values))
     sql_names <- ctx$tweaks$date_cast(char_values)
@@ -63,16 +73,22 @@ spec_result_roundtrip <- list(
     test_select_with_null(.ctx = ctx, con, .dots = setNames(values, sql_names))
   },
 
-  #'   (also applies to the return value of the SQL function `current_date`)
   data_date_current = function(ctx, con) {
+    #'   (also applies to the return value of the SQL function `current_date`)
     test_select_with_null(
       .ctx = ctx, con,
       "current_date" ~ is_roughly_current_date
     )
   },
 
-  #' - coercible using [hms::as_hms()] for times,
   data_time = function(ctx, con) {
+    #' - coercible using [hms::as_hms()] for times,
+    as_hms_equals_to <- function(x) {
+      lapply(x, function(xx) {
+        function(value) hms::as_hms(value) == xx
+      })
+    }
+
     char_values <- c("00:00:00", "12:34:56")
     time_values <- as_hms_equals_to(hms::as_hms(char_values))
     sql_names <- ctx$tweaks$time_cast(char_values)
@@ -81,16 +97,21 @@ spec_result_roundtrip <- list(
     test_select_with_null(.ctx = ctx, con, .dots = setNames(time_values, sql_names))
   },
 
-  #'   (also applies to the return value of the SQL function `current_time`)
   data_time_current = function(ctx, con) {
+    #'   (also applies to the return value of the SQL function `current_time`)
     test_select_with_null(
       .ctx = ctx, con,
       "current_time" ~ coercible_to_time
     )
   },
 
-  #' - coercible using [as.POSIXct()] for timestamps,
   data_timestamp = function(ctx, con) {
+    #' - coercible using [as.POSIXct()] for timestamps,
+    coercible_to_timestamp <- function(x) {
+      x_timestamp <- try_silent(as.POSIXct(x))
+      !is.null(x_timestamp) && all(is.na(x) == is.na(x_timestamp))
+    }
+
     char_values <- c("2015-10-11 00:00:00", "2015-10-11 12:34:56")
     time_values <- rep(list(coercible_to_timestamp), 2L)
     sql_names <- ctx$tweaks$timestamp_cast(char_values)
@@ -99,19 +120,26 @@ spec_result_roundtrip <- list(
     test_select_with_null(.ctx = ctx, con, .dots = setNames(time_values, sql_names))
   },
 
-  #'   (also applies to the return value of the SQL function `current_timestamp`)
   data_timestamp_current = function(ctx, con) {
+    #'   (also applies to the return value of the SQL function `current_timestamp`)
     test_select_with_null(
       .ctx = ctx, con,
-      "current_timestamp" ~ is_roughly_current_timestamp
+      "current_timestamp" ~ function(x) {
+        coercible_to_timestamp <- function(x) {
+          x_timestamp <- try_silent(as.POSIXct(x))
+          !is.null(x_timestamp) && all(is.na(x) == is.na(x_timestamp))
+        }
+
+        coercible_to_timestamp(x) && (Sys.time() - as.POSIXct(x, tz = "UTC") <= hms::hms(2))
+      }
     )
   },
 
   #'
-  #' If dates and timestamps are supported by the backend, the following R types are
-  #' used:
-  #' - [Date] for dates
   data_date_typed = function(ctx, con) {
+    #' If dates and timestamps are supported by the backend, the following R types are
+    #' used:
+    #' - [Date] for dates
     if (!isTRUE(ctx$tweaks$date_typed)) {
       skip("tweak: !date_typed")
     }
@@ -123,8 +151,8 @@ spec_result_roundtrip <- list(
     test_select_with_null(.ctx = ctx, con, .dots = setNames(values, sql_names))
   },
 
-  #'   (also applies to the return value of the SQL function `current_date`)
   data_date_current_typed = function(ctx, con) {
+    #'   (also applies to the return value of the SQL function `current_date`)
     if (!isTRUE(ctx$tweaks$date_typed)) {
       skip("tweak: !date_typed")
     }
@@ -135,8 +163,8 @@ spec_result_roundtrip <- list(
     )
   },
 
-  #' - [POSIXct] for timestamps
   data_timestamp_typed = function(ctx, con) {
+    #' - [POSIXct] for timestamps
     if (!isTRUE(ctx$tweaks$timestamp_typed)) {
       skip("tweak: !timestamp_typed")
     }
@@ -148,8 +176,8 @@ spec_result_roundtrip <- list(
     test_select_with_null(.ctx = ctx, con, .dots = setNames(timestamp_values, sql_names))
   },
 
-  #'   (also applies to the return value of the SQL function `current_timestamp`)
   data_timestamp_current_typed = function(ctx, con) {
+    #'   (also applies to the return value of the SQL function `current_timestamp`)
     if (!isTRUE(ctx$tweaks$timestamp_typed)) {
       skip("tweak: !timestamp_typed")
     }
@@ -170,6 +198,12 @@ spec_result_roundtrip <- list(
   #' - Coercion to numeric always returns a number that is as close as possible
   #'   to the true value
   data_64_bit_numeric = function(ctx, con) {
+    as_numeric_identical_to <- function(x) {
+      lapply(x, function(xx) {
+        function(value) as.numeric(value) == xx
+      })
+    }
+
     char_values <- c("10000000000", "-10000000000")
     test_values <- as_numeric_identical_to(as.numeric(char_values))
 
@@ -178,6 +212,12 @@ spec_result_roundtrip <- list(
 
   #' - Loss of precision when converting to numeric gives a warning
   data_64_bit_numeric_warning = function(ctx, con) {
+    as_numeric_equals_to <- function(x) {
+      lapply(x, function(xx) {
+        function(value) isTRUE(all.equal(as.numeric(value), xx))
+      })
+    }
+
     char_values <- c(" 1234567890123456789", "-1234567890123456789")
     num_values <- as.numeric(char_values)
     test_values <- as_numeric_equals_to(num_values)
@@ -202,6 +242,12 @@ spec_result_roundtrip <- list(
   #' - Conversion to character always returns a lossless decimal representation
   #'   of the data
   data_64_bit_lossless = function(ctx, con) {
+    as_character_equals_to <- function(x) {
+      lapply(x, function(xx) {
+        function(value) as.character(value) == xx
+      })
+    }
+
     char_values <- c("1234567890123456789", "-1234567890123456789")
     test_values <- as_character_equals_to(char_values)
 
@@ -260,7 +306,7 @@ test_select <- function(con, ..., .dots = NULL, .add_null = "none",
       query <- rev(query)
     }
     query <- paste0(query, ", ", 1:2, " as id")
-    query <- union(.ctx = .ctx, query)
+    query <- sql_union(.ctx = .ctx, query)
   }
 
   rows <- check_df(dbGetQuery(con, query))
@@ -322,19 +368,9 @@ has_utf8_or_ascii_encoding <- function(x) {
   }
 }
 
-is_raw_list <- function(x) {
-  is.list(x) && is.raw(x[[1L]])
-}
-
 coercible_to_date <- function(x) {
   x_date <- try_silent(as.Date(x))
   !is.null(x_date) && all(is.na(x) == is.na(x_date))
-}
-
-as_date_equals_to <- function(x) {
-  lapply(x, function(xx) {
-    function(value) as.Date(value) == xx
-  })
 }
 
 is_roughly_current_date <- function(x) {
@@ -346,43 +382,10 @@ coercible_to_time <- function(x) {
   !is.null(x_hms) && all(is.na(x) == is.na(x_hms))
 }
 
-as_hms_equals_to <- function(x) {
-  lapply(x, function(xx) {
-    function(value) hms::as_hms(value) == xx
-  })
-}
-
-coercible_to_timestamp <- function(x) {
-  x_timestamp <- try_silent(as.POSIXct(x))
-  !is.null(x_timestamp) && all(is.na(x) == is.na(x_timestamp))
-}
-
 as_timestamp_equals_to <- function(x) {
   lapply(x, function(xx) {
     function(value) as.POSIXct(value) == xx
   })
-}
-
-as_numeric_identical_to <- function(x) {
-  lapply(x, function(xx) {
-    function(value) as.numeric(value) == xx
-  })
-}
-
-as_numeric_equals_to <- function(x) {
-  lapply(x, function(xx) {
-    function(value) isTRUE(all.equal(as.numeric(value), xx))
-  })
-}
-
-as_character_equals_to <- function(x) {
-  lapply(x, function(xx) {
-    function(value) as.character(value) == xx
-  })
-}
-
-is_roughly_current_timestamp <- function(x) {
-  coercible_to_timestamp(x) && (Sys.time() - as.POSIXct(x, tz = "UTC") <= hms::hms(2))
 }
 
 is_date <- function(x) {
@@ -404,8 +407,4 @@ is_roughly_current_timestamp_typed <- function(x) {
 as_numeric_date <- function(d) {
   d <- as.Date(d)
   structure(as.numeric(unclass(d)), class = class(d))
-}
-
-quote_literal <- function(con, x) {
-  DBI::dbQuoteLiteral(con, x)
 }

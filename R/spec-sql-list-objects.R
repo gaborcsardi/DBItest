@@ -9,12 +9,12 @@ spec_sql_list_objects <- list(
     expect_equal(names(formals(dbListObjects)), c("conn", "prefix", "..."))
   },
 
-  #' @return
-  #' `dbListObjects()`
   list_objects = function(ctx, con, table_name = "dbit06") {
+    #' @return
+    #' `dbListObjects()`
     objects <- dbListObjects(con)
     #' returns a data frame
-    expect_is(objects, "data.frame")
+    expect_s3_class(objects, "data.frame")
     #' with columns
     cols <- c("table", "is_prefix")
     #' `table` and `is_prefix` (in that order),
@@ -28,7 +28,7 @@ spec_sql_list_objects <- list(
     expect_error(lapply(objects$table, dbQuoteIdentifier, conn = con), NA)
 
     #' The `is_prefix` column is a logical.
-    expect_is(objects$is_prefix, "logical")
+    expect_type(objects$is_prefix, "logical")
 
     #' This data frame contains one row for each object (schema, table
     expect_false(table_name %in% objects)
@@ -58,8 +58,8 @@ spec_sql_list_objects <- list(
   },
 
   #'
-  #' The same applies to temporary objects if supported by the database.
   list_objects_temporary = function(ctx, con, table_name) {
+    #' The same applies to temporary objects if supported by the database.
     if (isTRUE(ctx$tweaks$temporary_tables) && isTRUE(ctx$tweaks$list_temporary_tables)) {
       dbWriteTable(con, table_name, data.frame(a = 1L), temporary = TRUE)
 
@@ -70,8 +70,8 @@ spec_sql_list_objects <- list(
   },
 
   #'
-  #' The returned names are suitable for quoting with `dbQuoteIdentifier()`.
   list_objects_quote = function(ctx, con) {
+    #' The returned names are suitable for quoting with `dbQuoteIdentifier()`.
     if (isTRUE(ctx$tweaks$strict_identifier)) {
       table_names <- "a"
     } else {
@@ -88,31 +88,21 @@ spec_sql_list_objects <- list(
   },
 
   #'
-  #' @section Failure modes:
-  #' An error is raised when calling this method for a closed
   list_objects_closed_connection = function(ctx, closed_con) {
+    #' @section Failure modes:
+    #' An error is raised when calling this method for a closed
     expect_error(dbListObjects(closed_con))
   },
 
-  #' or invalid connection.
   list_objects_invalid_connection = function(ctx, invalid_con) {
+    #' or invalid connection.
     expect_error(dbListObjects(invalid_con))
   },
 
-  #' @section Specification:
   list_objects_features = function(ctx, con) {
+    #' @section Specification:
     objects <- dbListObjects(con)
 
-    #' The `table` object can be quoted with [dbQuoteIdentifier()].
-    sql <- lapply(objects$table, dbQuoteIdentifier, conn = con)
-    #' The result of quoting can be passed to [dbUnquoteIdentifier()].
-    unquoted <- vapply(sql, dbUnquoteIdentifier, conn = con, list(1))
-    #' The unquoted results are equal to the original `table` object.
-    expect_equal(unquoted, unclass(objects$table))
-    #' (For backends it may be convenient to use the [Id] class, but this is
-    #' not required.)
-
-    #'
     #' The `prefix` column indicates if the `table` value refers to a table
     #' or a prefix.
     #' For a call with the default `prefix = NULL`, the `table`
@@ -126,6 +116,21 @@ spec_sql_list_objects <- list(
     )
     all_tables <- dbQuoteIdentifier(con, dbListTables(con))
     expect_equal(sort(non_prefix_objects), sort(as.character(all_tables)))
+
+    #'
+    #' The `table` object can be quoted with [dbQuoteIdentifier()].
+    sql <- lapply(objects$table[!objects$is_prefix], dbQuoteIdentifier, conn = con)
+    #' The result of quoting can be passed to [dbUnquoteIdentifier()].
+    #' (We have to assume that the resulting identifier is a table, because one
+    #' cannot always tell from a quoted identifier alone whether it is a table
+    #' or a schema for example. As a consequence, the quote-unquote roundtrip
+    #' only works for tables (possibly schema-qualified), but not for other
+    #' database objects like schemata or columns.)
+    unquoted <- vapply(sql, dbUnquoteIdentifier, conn = con, list(1))
+    #' The unquoted results are equal to the original `table` object.
+    expect_equal(unquoted, unclass(objects$table[!objects$is_prefix]))
+    #' (For backends it may be convenient to use the [Id] class, but this is
+    #' not required.)
 
     if (!any(objects$is_prefix)) {
       skip("No schemas available")

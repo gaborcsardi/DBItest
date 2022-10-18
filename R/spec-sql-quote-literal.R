@@ -9,13 +9,13 @@ spec_sql_quote_literal <- list(
     expect_equal(names(formals(dbQuoteLiteral)), c("conn", "x", "..."))
   },
 
-  #' @return
   quote_literal_return = function(con) {
+    #' @return
     #' `dbQuoteLiteral()` returns an object that can be coerced to [character],
     simple <- "simple"
     simple_out <- dbQuoteLiteral(con, simple)
     expect_error(as.character(simple_out), NA)
-    expect_is(as.character(simple_out), "character")
+    expect_type(as.character(simple_out), "character")
     expect_equal(length(simple_out), 1L)
   },
   #
@@ -73,8 +73,8 @@ spec_sql_quote_literal <- list(
     #' to achieve this behavior, but this is not required.)
   },
 
-  #' @section Specification:
   quote_literal_roundtrip = function(ctx, con) {
+    #' @section Specification:
     do_test_literal <- function(x) {
       #' The returned expression can be used in a `SELECT ...` query,
       literals <- vapply(x, dbQuoteLiteral, conn = con, character(1))
@@ -129,8 +129,8 @@ spec_sql_quote_literal <- list(
     expect_identical(rows$quoted_na, as.character(na))
   },
   #
+  #'
   quote_literal_na_is_null = function(ctx, con) {
-    #'
     #' `NA` should be translated to an unquoted SQL `NULL`,
     null <- dbQuoteLiteral(con, NA_character_)
     #' so that the query `SELECT * FROM (SELECT 1) a WHERE ... IS NULL`
@@ -139,8 +139,8 @@ spec_sql_quote_literal <- list(
     expect_equal(nrow(rows), 1L)
   },
   #'
-  #' @section Failure modes:
   quote_literal_error = function(ctx, con) {
+    #' @section Failure modes:
     #'
     #' Passing a list
     expect_error(dbQuoteString(con, as.list(1:3)))

@@ -7,13 +7,15 @@ spec_result <- c(
   spec_result_send_statement,
   spec_result_execute,
   spec_result_create_table_with_data_type,
-  spec_result_roundtrip
+  spec_result_roundtrip,
+  #
+  NULL
 )
 
 
 # Helpers -----------------------------------------------------------------
 
-union <- function(..., .order_by = NULL, .ctx) {
+sql_union <- function(..., .order_by = NULL, .ctx) {
   query <- .ctx$tweaks$union(c(...))
 
   if (!missing(.order_by)) {
@@ -31,7 +33,7 @@ trivial_query <- function(n = 1L, column = "a", .order_by = NULL, .ctx = NULL) {
   if (length(column) == n) {
     query <- paste0("SELECT ", paste0(value, " AS ", column, collapse = ", "))
   } else {
-    query <- union(
+    query <- sql_union(
       paste0("SELECT ", value, " AS ", column),
       .order_by = .order_by,
       .ctx = .ctx
