@@ -31,7 +31,9 @@ local_result <- function(query, frame = rlang::caller_env()) {
   res <- query
   withr::defer(
     {
-      dbClearResult(res)
+      if (dbIsValid(res)) {
+        dbClearResult(res)
+      }
     },
     envir = frame
   )
