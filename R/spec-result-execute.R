@@ -80,7 +80,6 @@ spec_result_execute <- list(
 
   execute_immediate = function(ctx, con, table_name) {
     #' @inheritSection spec_result_get_query Specification for the `immediate` argument
-    Sys.setenv("ODBC_DEBUG" = "true")
     res <- expect_visible(dbExecute(con, trivial_statement(ctx, table_name), immediate = TRUE))
     expect_true(is.numeric(res))
   },
